@@ -1,5 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     const updateBtn = document.getElementById('updateBtn');
+    const botonSecondChance = document.getElementById('botonSecondChance');
+
 
     updateBtn.addEventListener('click', () => {
         // Crear un nuevo estudiante
@@ -80,5 +82,33 @@ document.addEventListener('DOMContentLoaded', () => {
         mmu.printFinalStats(); // 🎯 Mostrar métricas al final
         console.log("\n✅ Simulación completada.");
 
+    });
+
+    botonSecondChance.addEventListener('click', () => {
+        // 📜 Simulación con SC
+        const mmu = new MMU_SC(3);
+        const operations = [
+            "1 new(1,500)",
+                                       "2 use(1)",
+                                       "3 new(1,1000)",
+                                       "4 use(1)",
+                                       "5 use(2)",
+                                       "6 new(2,500)",
+                                       "7 use(3)",
+                                       "8 use(1)",
+                                       "9 new(2,50)",
+                                       "10 use(4)",
+                                       "11 delete(1)",
+                                       "12 use(2)",
+                                       "13 use(3)",
+                                       "14 delete(2)",
+                                       "15 kill(1)",
+                                       "16 kill(2)"
+        ];
+
+        console.log("\n🔄 Iniciando simulación con SC...");
+        operations.forEach(op => mmu.executeOperation(op));
+        mmu.printFinalStats(); // 🎯 Mostrar métricas finales
+        console.log("\n✅ Simulación completada.");
     });
 });
