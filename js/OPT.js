@@ -1,9 +1,9 @@
-class MMU_MRU {
-    constructor(ramSize) {
+class MMU_OPT {
+    constructor(ramSize, accessSequence) {
         console.log(`🔧 Inicializando MMU con ${ramSize} páginas en memoria.`);
         this.ramSize = ramSize;
         this.ram = new Map();
-        this.accessOrder = [];
+        this.accessSequence = accessSequence; // Secuencia futura de accesos
         this.clock = 0;        // Tiempo total de simulación
         this.thrashing = 0;    // Tiempo perdido en fallos de páginas
         this.fragmentacion = 0; // Bytes desperdiciados por fragmentación interna
@@ -39,14 +39,13 @@ class MMU_MRU {
         console.log(`🛠️ Fragmentación interna en ${ptr}: ${desperdicio} bytes.`);
 
         if (this.ram.size >= this.ramSize) {
-            let evictedPtr = this.accessOrder.pop(); // Expulsar la más recientemente usada?
+            let evictedPtr = this.findOptimalReplacement();
             this.ram.delete(evictedPtr);
-            console.log(`🚨 MRU: Página ${evictedPtr} reemplazada.`);
+            console.log(`🚀 OPT: Página ${evictedPtr} reemplazada utilizando algoritmo óptimo.`);
         }
 
         this.ram.set(ptr, pid);
-        this.accessOrder.push(ptr);
-        console.log(`✅ MRU: Página ${ptr} asignada a proceso ${pid}.`);
+        console.log(`✅ OPT: Página ${ptr} asignada a proceso ${pid}.`);
         return ptr;
     }
 
@@ -54,11 +53,6 @@ class MMU_MRU {
         if (this.ram.has(ptr)) {
             console.log(`🔵 HIT: Página ${ptr} está en RAM.`);
             this.clock += 1;
-
-            // :white_check_mark: Corrección: Mover la página al FINAL como "más recientemente usada"
-            this.accessOrder = this.accessOrder.filter(p => p !== ptr);
-            this.accessOrder.push(ptr);
-
         } else {
             console.log(`🔴 FAULT: Página ${ptr} no está en RAM.`);
             this.clock += 5;
@@ -69,13 +63,24 @@ class MMU_MRU {
         console.log(`🔥 Thrashing acumulado: ${this.thrashing}s`);
     }
 
+    findOptimalReplacement() {
+        let futureAccesses = new Map();
+
+        this.ram.forEach((_, ptr) => {
+            let nextUse = this.accessSequence.indexOf(ptr);
+            futureAccesses.set(ptr, nextUse === -1 ? Infinity : nextUse);
+        });
+
+        let evictedPtr = [...futureAccesses.entries()].sort((a, b) => b[1] - a[1])[0][0];
+        return evictedPtr;
+    }
+
     deletePage(ptr) {
         if (this.ram.has(ptr)) {
             this.ram.delete(ptr);
-            this.accessOrder = this.accessOrder.filter(p => p !== ptr);
-            console.log(`🗑️ MRU: Página ${ptr} eliminada.`);
+            console.log(`🗑️ OPT: Página ${ptr} eliminada.`);
         } else {
-            console.log(`⚠️ MRU: Página ${ptr} no encontrada.`);
+            console.log(`⚠️ OPT: Página ${ptr} no encontrada.`);
         }
     }
 
@@ -103,8 +108,10 @@ class MMU_MRU {
 }
 
 /*
-// 📜 Simulación con MRU mejorado
-const mmu = new MMU_MRU(3);
+// 📜 Simulación con OPT
+const accessSequence = ["P1", "P2", "P3", "P4", "P1", "P3", "P5", "P2"]; // Secuencia futura de accesos
+
+const mmu = new MMU_OPT(3, accessSequence);
 const operations = [
     "1 new(1,500)",
     "2 use(1)",
@@ -124,7 +131,7 @@ const operations = [
     "16 kill(2)"
 ];
 
-console.log("\n🔄 Iniciando simulación con MRU...");
+console.log("\n🔄 Iniciando simulación con OPT...");
 operations.forEach(op => mmu.executeOperation(op));
 mmu.printFinalStats(); // 🎯 Mostrar métricas finales
 console.log("\n✅ Simulación completada.");
