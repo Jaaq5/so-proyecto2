@@ -1,10 +1,9 @@
-class MMU_SC {
+class MMU_MRU {
     constructor(ramSize) {
         console.log(`🔧 Inicializando MMU con ${ramSize} páginas en memoria.`);
         this.ramSize = ramSize;
         this.ram = new Map();
-        this.queue = [];
-        this.references = new Map();
+        this.accessOrder = [];
         this.clock = 0;        // Tiempo total de simulación
         this.thrashing = 0;    // Tiempo perdido en fallos de páginas
         this.fragmentacion = 0; // Bytes desperdiciados por fragmentación interna
@@ -19,7 +18,6 @@ class MMU_SC {
         if (type === "new") {
             let [pid, size] = params.map(Number);
             let ptr = this.allocatePage(pid, size);
-            this.references.set(ptr, true);
         } else if (type === "use") {
             let ptr = `P${params[0]}`;
             this.usePage(ptr);
@@ -35,29 +33,20 @@ class MMU_SC {
     }
 
     allocatePage(pid, size) {
-        let ptr = `P${this.queue.length + 1}`; // Generamos un puntero para la nueva página
+        let ptr = `P${this.ram.size + 1}`; // Generamos un puntero para la nueva página
         let desperdicio = (Math.ceil(size / 4096) * 4096) - size; // Calcular fragmentación interna
         this.fragmentacion += desperdicio;
         console.log(`🛠️ Fragmentación interna en ${ptr}: ${desperdicio} bytes.`);
 
-        if (this.queue.length >= this.ramSize) {
-            while (true) {
-                let candidate = this.queue.shift();
-                if (this.references.get(candidate)) {
-                    this.references.set(candidate, false); // Segunda oportunidad
-                    this.queue.push(candidate);
-                } else {
-                    this.ram.delete(candidate);
-                    console.log(`🚨 SC: Página ${candidate} reemplazada.`);
-                    break;
-                }
-            }
+        if (this.ram.size >= this.ramSize) {
+            let evictedPtr = this.accessOrder.shift(); // Expulsar la más recientemente usada
+            this.ram.delete(evictedPtr);
+            console.log(`🚨 MRU: Página ${evictedPtr} reemplazada.`);
         }
 
-        this.queue.push(ptr);
         this.ram.set(ptr, pid);
-        this.references.set(ptr, true);
-        console.log(`✅ SC: Página ${ptr} asignada a proceso ${pid}.`);
+        this.accessOrder.push(ptr);
+        console.log(`✅ MRU: Página ${ptr} asignada a proceso ${pid}.`);
         return ptr;
     }
 
@@ -65,7 +54,11 @@ class MMU_SC {
         if (this.ram.has(ptr)) {
             console.log(`🔵 HIT: Página ${ptr} está en RAM.`);
             this.clock += 1;
-            this.references.set(ptr, true);
+
+            // :white_check_mark: Corrección: Mover la página al FINAL como "más recientemente usada"
+            this.accessOrder = this.accessOrder.filter(p => p !== ptr);
+            this.accessOrder.push(ptr);
+
         } else {
             console.log(`🔴 FAULT: Página ${ptr} no está en RAM.`);
             this.clock += 5;
@@ -79,11 +72,10 @@ class MMU_SC {
     deletePage(ptr) {
         if (this.ram.has(ptr)) {
             this.ram.delete(ptr);
-            this.queue = this.queue.filter(p => p !== ptr);
-            this.references.delete(ptr);
-            console.log(`🗑️ SC: Página ${ptr} eliminada.`);
+            this.accessOrder = this.accessOrder.filter(p => p !== ptr);
+            console.log(`🗑️ MRU: Página ${ptr} eliminada.`);
         } else {
-            console.log(`⚠️ SC: Página ${ptr} no encontrada.`);
+            console.log(`⚠️ MRU: Página ${ptr} no encontrada.`);
         }
     }
 
@@ -111,8 +103,8 @@ class MMU_SC {
 }
 
 /*
-// 📜 Simulación con SC
-const mmu = new MMU_SC(3);
+// 📜 Simulación con MRU mejorado
+const mmu = new MMU_MRU(3);
 const operations = [
     "1 new(1,500)",
     "2 use(1)",
@@ -132,7 +124,7 @@ const operations = [
     "16 kill(2)"
 ];
 
-console.log("\n🔄 Iniciando simulación con SC...");
+console.log("\n🔄 Iniciando simulación con MRU...");
 operations.forEach(op => mmu.executeOperation(op));
 mmu.printFinalStats(); // 🎯 Mostrar métricas finales
 console.log("\n✅ Simulación completada.");
