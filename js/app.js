@@ -200,8 +200,57 @@ document.addEventListener('DOMContentLoaded', () => {
 
         console.log("\n🔄 Iniciando simulación con OPT...");
         operations.forEach(op => mmu.executeOperation(op));
-        mmu.printFinalStats(); // 🎯 Mostrar métricas finales
+        mmu.printFinalStats();
+        const summary = mmu.summary();
+        renderSummary(summary, 'summaryContainer');
         console.log("\n✅ Simulación completada.");
     });
+
+
+
+    function renderSummary(summary, containerId) {
+            
+        const c = document.getElementById(containerId);
+        if (!c) return;
+
+        c.innerHTML = `
+            <!-- Tabla de Processes / Sim-Time -->
+            <table class="summary-table">
+            <tr><th>Processes</th><th>Sim-Time</th></tr>
+            <tr><td>${summary.processes}</td><td>${summary.simTime}</td></tr>
+            </table>
+
+            <!-- Tabla de RAM / V-RAM -->
+            <table class="summary-table">
+            <tr>
+                <th>RAM KB</th><th>RAM %</th>
+                <th>V-RAM KB</th><th>V-RAM %</th>
+            </tr>
+            <tr>
+                <td>${summary.ramKB}</td><td>${summary.ramPct}%</td>
+                <td>${summary.vRamKB}</td><td>${summary.vRamPct}%</td>
+            </tr>
+            </table>
+
+            <!-- Tabla de Pages / Thrashing / Fragmentación -->
+            <table class="summary-table">
+            <tr>
+                <th colspan="2">PAGES</th>
+                <th colspan="2">Thrashing</th>
+                <th>Fragmentación</th>
+            </tr>
+            <tr>
+                <td>Loaded</td><td>Unloaded</td>
+                <td>${summary.thrashingTime}</td><td>${summary.thrashingPct}%</td>
+                <td>${summary.fragmentation}</td>
+            </tr>
+            <tr>
+                <td>${summary.pagesLoaded}</td><td>${summary.pagesUnloaded}</td>
+                <td colspan="2"></td><td></td>
+            </tr>
+            </table>
+        `;
+        }
+
 
 });

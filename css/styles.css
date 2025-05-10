@@ -64,3 +64,17 @@ button {
 button:hover {
     background-color: #45a049;
 }
+
+.summary-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+.summary-table th, .summary-table td {
+  border: 1px solid #333;
+  padding: 0.5em;
+  text-align: center;
+}
+.summary-table th {
+  background: #eee;
+}

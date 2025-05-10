@@ -4,6 +4,7 @@ class MMU_OPT {
         this.ramSize = ramSize;
         this.ram = new Map();
         this.ptrCounter = 1;
+        this.processTable = new Map();
         this.accessSequence = accessSequence; // Secuencia futura de accesos
         this.clock = 0;        // Tiempo total de simulación
         this.thrashing = 0;    // Tiempo perdido en fallos de páginas
@@ -34,7 +35,20 @@ class MMU_OPT {
     }
 
     allocatePage(pid, size) {
-        let ptr = `P${this.ptrCounter++}`; // NUEVO: Siempre crea P1, P2, P3… sin repetir
+
+
+        // 0) Inicializar el Set de ptrs para este PID
+        if (!this.processTable.has(pid)) {
+            this.processTable.set(pid, new Set());
+        }
+
+        // 1) Crear nuevo ptr
+        let ptr = `P${this.ptrCounter++}`;
+        // 2) Registrar ptr en processTable
+        this.processTable.get(pid).add(ptr);
+
+
+
         this.accessSequence.push(ptr); //NUEVO: PUNTEROS NUEVOS
         
         let desperdicio = (Math.ceil(size / 4096) * 4096) - size; // Calcular fragmentación interna
@@ -55,20 +69,26 @@ class MMU_OPT {
     usePage(ptr) {
 
 
-        const index = this.accessSequence.indexOf(ptr);
-        if (index !== -1) this.accessSequence.splice(index, 1);
+        // 1) Actualizar futura secuencia de accesos
+        const idx = this.accessSequence.indexOf(ptr);
+        if (idx !== -1) this.accessSequence.splice(idx, 1);
 
+        // 2) HIT o FAULT
         if (this.ram.has(ptr)) {
-            console.log(`🔵 HIT: Página ${ptr} está en RAM.`);
-            this.clock += 1;
+        console.log(`🔵 HIT: Página ${ptr} en RAM.`);
+        this.clock += 1;
         } else {
-            console.log(`🔴 FAULT: Página ${ptr} no está en RAM.`);
-            this.clock += 5;
-            this.thrashing += 5;
+        console.log(`🔴 FAULT: Página ${ptr} no en RAM.`);
+        this.clock += 5;
+        this.thrashing += 5;
         }
 
+        // 3) Mostrar tiempos
         console.log(`⏳ Tiempo total: ${this.clock}s`);
-        console.log(`🔥 Thrashing acumulado: ${this.thrashing}s`);
+        console.log(`🔥 Thrashing: ${this.thrashing}s`);
+
+
+
     }
 
     findOptimalReplacement() {
@@ -113,6 +133,47 @@ class MMU_OPT {
         const pct = ((this.thrashing / this.clock) * 100).toFixed(2);
         console.log(`⚠️ Porcentaje de thrashing: ${pct}%`);
     }
+
+
+
+  summary() {
+    // total de procesos (suponemos que los PID activos están en this.processTable o en this.ram)
+    const processes = this.processTable
+      ? this.processTable.size
+      : new Set(this.ram.values()).size;
+
+    // tiempo de simulacion
+    const simTime = `${this.clock}s`;
+
+    // RAM y V-RAM en KB y %
+    const ramKB = this.ram.size * 4;                   // 4KB por página
+    const ramPct = Math.round((ramKB / (this.ramSize * 4)) * 100);
+    const totalPagesEver = this.ptrCounter
+      ? this.ptrCounter - 1
+      : /* para FIFO, SC y demas gente */ 0;
+    const pagesLoaded = this.ram.size;
+    const pagesUnloaded = totalPagesEver - pagesLoaded;
+    const vRamKB = pagesUnloaded * 4;
+    const vRamPct = Math.round((vRamKB / (this.ramSize * 4)) * 100);
+
+    // Thrashing
+    const thrashingTime = `${this.thrashing}s`;
+    const thrashingPct = Math.round((this.thrashing / this.clock) * 100);
+
+    // Fragmentación (bytes ➞ KB)
+    const fragmentation = `${Math.round(this.fragmentacion / 1024)}KB`;
+
+    return {
+      processes,
+      simTime,
+      ramKB, ramPct,
+      vRamKB, vRamPct,
+      pagesLoaded, pagesUnloaded,
+      thrashingTime, thrashingPct,
+      fragmentation
+    };
+  }
+
 }
 
 /*
