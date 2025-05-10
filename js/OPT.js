@@ -3,6 +3,7 @@ class MMU_OPT {
         console.log(`🔧 Inicializando MMU con ${ramSize} páginas en memoria.`);
         this.ramSize = ramSize;
         this.ram = new Map();
+        this.ptrCounter = 1;
         this.accessSequence = accessSequence; // Secuencia futura de accesos
         this.clock = 0;        // Tiempo total de simulación
         this.thrashing = 0;    // Tiempo perdido en fallos de páginas
@@ -33,7 +34,9 @@ class MMU_OPT {
     }
 
     allocatePage(pid, size) {
-        let ptr = `P${this.ram.size + 1}`; // Generamos un puntero para la nueva página
+        let ptr = `P${this.ptrCounter++}`; // NUEVO: Siempre crea P1, P2, P3… sin repetir
+        this.accessSequence.push(ptr); //NUEVO: PUNTEROS NUEVOS
+        
         let desperdicio = (Math.ceil(size / 4096) * 4096) - size; // Calcular fragmentación interna
         this.fragmentacion += desperdicio;
         console.log(`🛠️ Fragmentación interna en ${ptr}: ${desperdicio} bytes.`);
@@ -50,6 +53,11 @@ class MMU_OPT {
     }
 
     usePage(ptr) {
+
+
+        const index = this.accessSequence.indexOf(ptr);
+        if (index !== -1) this.accessSequence.splice(index, 1);
+
         if (this.ram.has(ptr)) {
             console.log(`🔵 HIT: Página ${ptr} está en RAM.`);
             this.clock += 1;
