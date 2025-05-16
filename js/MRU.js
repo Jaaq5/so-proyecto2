@@ -10,7 +10,11 @@ class MMU_MRU {
     }
 
     executeOperation(operation) {
+
+
         console.log(`\n📝 Ejecutando operación: ${operation}`);
+
+        
         let [index, command] = operation.split(" ");
         let [type, params] = command.split("(");
         params = params.replace(")", "").split(",");
