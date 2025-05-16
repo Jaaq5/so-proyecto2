@@ -6,30 +6,53 @@ class MMU_RND {
         this.clock = 0;        // Tiempo total de simulación
         this.thrashing = 0;    // Tiempo perdido en fallos de páginas
         this.fragmentacion = 0; // Bytes desperdiciados por fragmentación interna
+        this.processTable = new Map();
+
+    
     }
 
     executeOperation(operation) {
+
+
         console.log(`\n📝 Ejecutando operación: ${operation}`);
-        let [index, command] = operation.split(" ");
-        let [type, params] = command.split("(");
-        params = params.replace(")", "").split(",");
 
-        if (type === "new") {
-            let [pid, size] = params.map(Number);
-            let ptr = this.allocatePage(pid, size);
-        } else if (type === "use") {
-            let ptr = `P${params[0]}`;
-            this.usePage(ptr);
-        } else if (type === "delete") {
-            let ptr = `P${params[0]}`;
-            this.deletePage(ptr);
-        } else if (type === "kill") {
-            let pid = Number(params[0]);
-            this.killProcess(pid);
-        }
+        //SE ELIMINA ESE NUMERO QUE VENIA AL PRINCIPIO
+        const command = operation.trim();
+        const [type, rawParams] = command.split("(");
+        const params = rawParams
+        .replace(")", "")
+        .split(",")
+        .map(Number);
 
-        this.printStatus();
+
+    if (type === "new") {
+
+      const [pid, size] = params;
+
+      // Asignamos pagina
+      const ptr = this.allocatePage(pid, size);
+
+      if (!this.processTable.has(pid)) this.processTable.set(pid, []);
+      this.processTable.get(pid).push(ptr);
+
+    } else if (type === "use") {
+      //  formateamos con P como los demas
+      const [ptrIndex] = params;
+      const ptr = `P${ptrIndex}`;
+      this.usePage(ptr);
+
+    } else if (type === "delete") {
+      const [ptrIndex] = params;
+      const ptr = `P${ptrIndex}`;
+      this.deletePage(ptr);
+
+    } else if (type === "kill") {
+      const [pid] = params;
+      this.killProcess(pid);
     }
+
+    this.printStatus();
+  }
 
     allocatePage(pid, size) {
         let ptr = `P${this.ram.size + 1}`; // Generamos un puntero para la nueva página
