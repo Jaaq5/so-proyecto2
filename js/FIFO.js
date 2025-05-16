@@ -15,26 +15,46 @@ class MMU_FIFO {
     }
 
     executeOperation(operation) {
-        console.log(`\n📝 Ejecutando operación: ${operation}`);
-        let [index, command] = operation.split(" ");
-        let [type, params] = command.split("(");
-        params = params.replace(")", "").split(",");
 
+        //Esto lo dejamos
+        console.log(`\n📝 Ejecutando operación: ${operation}`);
+        //Limpiar espacios 
+        const command = operation.trim();
+        //Dabamos un error de redeclaracion , por eso se puso rawParams
+        const [type, rawParams] = command.split("(");
+        //Params es un numer limpio 
+        const params = rawParams
+            .replace(")", "")
+            .split(",")
+            .map(Number);
         if (type === "new") {
-            let [pid, size] = params.map(Number);
-            let ptr = this.allocatePage(pid, size);
-            this.processTable.get(pid).push(ptr);
+            //Params ya es un array de numeros como tal [pid, size]
+            const [pid , size ] = params;
+
+             // Aseguramos que exista la tabla para este PID
+        if (!this.processTable.has(pid)) {
+            this.processTable.set(pid, []);
+        
+        }
+        //Asignamos la pagina y guardamos el ptr
+        const ptr = this.allocatePage(pid, size);
+        this.processTable.get(pid).push(ptr);
         } else if (type === "use") {
-            let ptr = Number(params[0]);
+            //Params = [ptr]
+            const [ptr] = params;
             this.usePage(ptr);
+
         } else if (type === "delete") {
-            let ptr = Number(params[0]);
+            // params = [ptr]
+            const [ptr] = params;
             this.deletePage(ptr);
+
         } else if (type === "kill") {
-            let pid = Number(params[0]);
+
+             // params = [pid]
+            const [pid] = params;
             this.killProcess(pid);
         }
-
         this.printStatus();
     }
 

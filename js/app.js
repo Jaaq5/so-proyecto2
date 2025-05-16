@@ -1,8 +1,8 @@
 
-// 1. Cajon para el archivo cargado (inicialmente vacío)
+// 1. Cajon para el archivo cargado
 let operacionesDesdeArchivo = null;
 
-// 2. Cajón para tu lista fija
+// 2. Cajon para tu lista fijaaaa
 const operacionesPorDefecto = [
          "1 new(1,500)",    // Puntero P1 asignado
             "2 new(1,1000)",   // Puntero P2 asignado
