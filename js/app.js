@@ -1,55 +1,10 @@
-document.addEventListener('DOMContentLoaded', () => {
-    const updateBtn = document.getElementById('updateBtn');
-    const botonSecondChance = document.getElementById('botonSecondChance');
-    const botonMRU = document.getElementById('botonMRU');
-    const botonRND = document.getElementById('botonRND');
-    const botonOPT = document.getElementById('botonOPT');
 
+// 1. Cajon para el archivo cargado (inicialmente vacío)
+let operacionesDesdeArchivo = null;
 
-
-
-    updateBtn.addEventListener('click', () => {
-        // Crear un nuevo estudiante
-        const estudiante = new Estudiante(
-            'Juan Pérez',
-            '2020-12345',
-            'Ingeniería en Sistemas'
-        );
-
-        // Mostrar info en consola
-        estudiante.mostrarInfo();
-
-        // Actualizar la tabla en el HTML
-        const info = estudiante.getInfo();
-        document.getElementById('nombre').textContent = info.nombre;
-        document.getElementById('carne').textContent = info.carne;
-        document.getElementById('carrera').textContent = info.carrera;
-
-        // 📜 Simulación con la secuencia EXACTA
-        const mmu = new MMU_FIFO(3);
-
-        /*
-        const operations = [
-            "1 new(1,500)",   // Puntero 1 asignado
-            "2 new(1,1000)",  // Puntero 2 asignado
-            "3 new(1,2000)",  // Puntero 3 asignado
-            "4 use(1)",      //  HIT (Página 1 en RAM)
-            "5 use(2)",       //  HIT (Página 2 en RAM)
-            "6 use(3)",      //  HIT (Página 3 en RAM)
-            "7 new(2,500)",   //  FIFO reemplaza Puntero 1 (Memoria llena)
-            "8 use(1)",       //  FAULT (Página 1 fue expulsada, fallo de página)
-            "9 use(4)",       //  FAULT (Página 4 no existe en RAM, fallo de página)
-            "10 new(2,50)",   //  FIFO reemplaza otra página
-            "11 use(2)",      //  HIT (Página 2 en RAM)
-            "12 use(3)",      //  HIT (Página 3 en RAM)
-            "13 use(5)",      //  FAULT (Página 5 no existe, fallo de página)
-            "14 delete(2)",   // Página 2 eliminada
-            "15 use(2)",      //  FAULT (Página 2 eliminada, fallo de página)
-            "16 kill(1)"     // Todas las páginas del proceso 1 eliminadas
-        ];
-        */
-        const operations = [
-            "1 new(1,500)",    // Puntero P1 asignado
+// 2. Cajón para tu lista fija
+const operacionesPorDefecto = [
+         "1 new(1,500)",    // Puntero P1 asignado
             "2 new(1,1000)",   // Puntero P2 asignado
             "3 new(1,2000)",   // Puntero P3 asignado
             "4 use(1)",        // :white_check_mark: HIT (Página P1 en RAM)
@@ -79,129 +34,82 @@ document.addEventListener('DOMContentLoaded', () => {
             "28 use(8)",       // :red_circle: FAULT (Página P8 no está en RAM)
             "29 new(6,300)",   // :rotating_light: FIFO reemplaza otra página
             "30 kill(2)"       // Todas las páginas del proceso 2 eliminadas
-        ];
+];
 
 
-        console.log("\n🔄 Iniciando simulación con FIFO...");
-        operations.forEach(op => mmu.executeOperation(op));
-        mmu.printFinalStats(); // 🎯 Mostrar métricas al final
-        console.log("\n✅ Simulación completada.");
 
+document.addEventListener('DOMContentLoaded', () => {
+    const updateBtn = document.getElementById('updateBtn');
+    const botonSecondChance = document.getElementById('botonSecondChance');
+    const botonMRU = document.getElementById('botonMRU');
+    const botonRND = document.getElementById('botonRND');
+    const botonOPT = document.getElementById('botonOPT');
+
+
+    const fileInput = document.getElementById("fileInput");
+    const botonCargar = document.getElementById("cargarArchivo");
+
+    botonCargar.addEventListener("click", () => {
+        const archivo = fileInput.files[0];
+        if (!archivo) {
+        alert("❗ Selecciona primero un archivo .txt");
+        return;
+        }
+        const lector = new FileReader();
+        lector.onload = e => {
+        operacionesDesdeArchivo = e.target.result
+            .split("\n")
+            .map(l => l.trim())
+            .filter(l => l);
+        console.log("📂 Archivo cargado:", operacionesDesdeArchivo);
+        };
+        lector.readAsText(archivo);
     });
 
-    botonSecondChance.addEventListener('click', () => {
-        // 📜 Simulación con SC
-        const mmu = new MMU_SC(3);
-        const operations = [
-            "1 new(1,500)",
-                                       "2 use(1)",
-                                       "3 new(1,1000)",
-                                       "4 use(1)",
-                                       "5 use(2)",
-                                       "6 new(2,500)",
-                                       "7 use(3)",
-                                       "8 use(1)",
-                                       "9 new(2,50)",
-                                       "10 use(4)",
-                                       "11 delete(1)",
-                                       "12 use(2)",
-                                       "13 use(3)",
-                                       "14 delete(2)",
-                                       "15 kill(1)",
-                                       "16 kill(2)"
-        ];
-
-        console.log("\n🔄 Iniciando simulación con SC...");
-        operations.forEach(op => mmu.executeOperation(op));
-        mmu.printFinalStats(); // 🎯 Mostrar métricas finales
-        console.log("\n✅ Simulación completada.");
+    updateBtn.addEventListener("click", () => {
+    const ops = operacionesDesdeArchivo || operacionesPorDefecto;
+    runSimulation(ops, MMU_FIFO);
     });
 
-    botonMRU.addEventListener('click', () => {
-        // 📜 Simulación con MRU
-        const mmu = new MMU_MRU(3);
-        const operations = [
-            "1 new(1,500)",
-                              "2 use(1)",
-                              "3 new(1,1000)",
-                              "4 use(1)",
-                              "5 use(2)",
-                              "6 new(2,500)",
-                              "7 use(3)",
-                              "8 use(1)",
-                              "9 new(2,50)",
-                              "10 use(4)",
-                              "11 delete(1)",
-                              "12 use(2)",
-                              "13 use(3)",
-                              "14 delete(2)",
-                              "15 kill(1)",
-                              "16 kill(2)"
-        ];
 
-        console.log("\n🔄 Iniciando simulación con MRU...");
-        operations.forEach(op => mmu.executeOperation(op));
-        mmu.printFinalStats(); // 🎯 Mostrar métricas finales
-        console.log("\n✅ Simulación completada.");
 
+    botonSecondChance.addEventListener("click", () => {
+    const ops = operacionesDesdeArchivo || operacionesPorDefecto;
+    runSimulation(ops, MMU_SC);
     });
 
-    botonRND.addEventListener('click', () => {
-        // 📜 Simulación con RND
-        const mmu = new MMU_RND(3);
-        const operations = [
-            "1 new(1,500)",
-                              "2 use(1)",
-                              "3 new(1,1000)",
-                              "4 use(1)",
-                              "5 use(2)",
-                              "6 new(2,500)",
-                              "7 use(3)",
-                              "8 use(1)",
-                              "9 new(2,50)",
-                              "10 use(4)",
-                              "11 delete(1)",
-                              "12 use(2)",
-                              "13 use(3)",
-                              "14 delete(2)",
-                              "15 kill(1)",
-                              "16 kill(2)"
-        ];
-
-        console.log("\n🔄 Iniciando simulación con RND...");
-        operations.forEach(op => mmu.executeOperation(op));
-        mmu.printFinalStats(); // 🎯 Mostrar métricas finales
-        console.log("\n✅ Simulación completada.");
+    botonMRU.addEventListener("click", () => {
+    const ops = operacionesDesdeArchivo || operacionesPorDefecto;
+    runSimulation(ops, MMU_MRU);
     });
 
-    botonOPT.addEventListener('click', () => {
-        // 📜 Simulación con OPT
-        const accessSequence = ["P1", "P2", "P3", "P4", "P1", "P3", "P5", "P2"]; // Secuencia futura de accesos
-
-        const mmu = new MMU_OPT(3, accessSequence);
-        const operations = [
-            "1 new(1,500)",
-                              "2 use(1)",
-                              "3 new(1,1000)",
-                              "4 use(1)",
-                              "5 use(2)",
-                              "6 new(2,500)",
-                              "7 use(3)",
-                              "8 use(1)",
-                              "9 new(2,50)",
-                              "10 use(4)",
-                              "11 delete(1)",
-                              "12 use(2)",
-                              "13 use(3)",
-                              "14 delete(2)",
-                              "15 kill(1)",
-                              "16 kill(2)"
-        ];
-
-        console.log("\n🔄 Iniciando simulación con OPT...");
-        operations.forEach(op => mmu.executeOperation(op));
-        mmu.printFinalStats(); // 🎯 Mostrar métricas finales
-        console.log("\n✅ Simulación completada.");
+    botonRND.addEventListener("click", () => {
+    const ops = operacionesDesdeArchivo || operacionesPorDefecto;
+    runSimulation(ops, MMU_RND);
     });
+
+    botonOPT.addEventListener("click", () => {
+    const ops = operacionesDesdeArchivo || operacionesPorDefecto;
+    runSimulation(ops, MMU_OPT);
+    });
+
 
 });
+
+function runSimulation(ops, MMUClass) {
+  let seqOpt = [];
+  if (MMUClass === MMU_OPT) {
+    seqOpt = ops
+      .filter(l => l.includes("use("))
+      .map(l => "P" + l.match(/use\((\d+)\)/)[1]);
+  }
+
+  const mmu = MMUClass === MMU_OPT
+    ? new MMU_OPT(3, seqOpt)
+    : new MMUClass(3);
+
+  console.log(`\n🔄 Simulación con ${MMUClass.name}...`);
+  ops.forEach(op => mmu.executeOperation(op));
+  mmu.printFinalStats();
+  console.log("✅ Simulación completada.");
+}
