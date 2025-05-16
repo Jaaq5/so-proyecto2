@@ -7,34 +7,63 @@ class MMU_MRU {
         this.clock = 0;        // Tiempo total de simulación
         this.thrashing = 0;    // Tiempo perdido en fallos de páginas
         this.fragmentacion = 0; // Bytes desperdiciados por fragmentación interna
+    
+        //Necesitamos la misma tabla de procesos que en FIFO
+        this.processTable = new Map();
+    
     }
 
     executeOperation(operation) {
+    // Mostramos la operación que llega
+    console.log(`\n📝 Ejecutando operación: ${operation}`);
 
+    // 1. Limpiamos espacios y tomamos la instrucción completa
+    const command = operation.trim();
 
-        console.log(`\n📝 Ejecutando operación: ${operation}`);
+    // 2. Separamos el tipo ('new','use',etc.) de los parámetros crudos
+    const [type, rawParams] = command.split("(");
 
-        
-        let [index, command] = operation.split(" ");
-        let [type, params] = command.split("(");
-        params = params.replace(")", "").split(",");
+    // 3. Convertimos rawParams a array de números
+    const params = rawParams
+      .replace(")", "")
+      .split(",")
+      .map(Number);
 
-        if (type === "new") {
-            let [pid, size] = params.map(Number);
-            let ptr = this.allocatePage(pid, size);
-        } else if (type === "use") {
-            let ptr = `P${params[0]}`;
-            this.usePage(ptr);
-        } else if (type === "delete") {
-            let ptr = `P${params[0]}`;
-            this.deletePage(ptr);
-        } else if (type === "kill") {
-            let pid = Number(params[0]);
-            this.killProcess(pid);
-        }
+    if (type === "new") {
+      // Desestructuramos pid y size de params
+      const [pid, size] = params;
 
-        this.printStatus();
+      // Aseguramos que exista la tabla de ese proceso
+      if (!this.processTable.has(pid)) {
+        this.processTable.set(pid, []);
+      }
+
+      // Asignamos la página y almacenamos el puntero
+      const ptr = this.allocatePage(pid, size);
+      this.processTable.get(pid).push(ptr);
+
+    } else if (type === "use") {
+      // Para usar, desestructuramos ptr de params
+      const [ptrIndex] = params;
+      // En MRU los punteros van con 'P' delante
+      const ptr = `P${ptrIndex}`;
+      this.usePage(ptr);
+
+    } else if (type === "delete") {
+      // Desestructuramos ptr
+      const [ptrIndex] = params;
+      const ptr = `P${ptrIndex}`;
+      this.deletePage(ptr);
+
+    } else if (type === "kill") {
+      // Desestructuramos pid
+      const [pid] = params;
+      this.killProcess(pid);
     }
+
+    // Imprimimos el estado tras cada operación
+    this.printStatus();
+  }
 
     allocatePage(pid, size) {
         let ptr = `P${this.ram.size + 1}`; // Generamos un puntero para la nueva página
@@ -87,6 +116,8 @@ class MMU_MRU {
         console.log(`☠️ Eliminando proceso ${pid} y sus páginas.`);
         let pagesToRemove = [...this.ram.entries()].filter(([ptr, p]) => p === pid);
         pagesToRemove.forEach(([ptr]) => this.deletePage(ptr));
+        this.processTable.delete(pid);  
+
     }
 
     printStatus() {
@@ -105,31 +136,3 @@ class MMU_MRU {
         console.log(`⚠️ Porcentaje de thrashing: ${pct}%`);
     }
 }
-
-/*
-// 📜 Simulación con MRU mejorado
-const mmu = new MMU_MRU(3);
-const operations = [
-    "1 new(1,500)",
-    "2 use(1)",
-    "3 new(1,1000)",
-    "4 use(1)",
-    "5 use(2)",
-    "6 new(2,500)",
-    "7 use(3)",
-    "8 use(1)",
-    "9 new(2,50)",
-    "10 use(4)",
-    "11 delete(1)",
-    "12 use(2)",
-    "13 use(3)",
-    "14 delete(2)",
-    "15 kill(1)",
-    "16 kill(2)"
-];
-
-console.log("\n🔄 Iniciando simulación con MRU...");
-operations.forEach(op => mmu.executeOperation(op));
-mmu.printFinalStats(); // 🎯 Mostrar métricas finales
-console.log("\n✅ Simulación completada.");
-*/
