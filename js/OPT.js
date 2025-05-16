@@ -8,30 +8,68 @@ class MMU_OPT {
         this.clock = 0;        // Tiempo total de simulación
         this.thrashing = 0;    // Tiempo perdido en fallos de páginas
         this.fragmentacion = 0; // Bytes desperdiciados por fragmentación interna
+        this.processTable = new Map();
+
+    
     }
 
     executeOperation(operation) {
-        console.log(`\n📝 Ejecutando operación: ${operation}`);
-        let [index, command] = operation.split(" ");
-        let [type, params] = command.split("(");
-        params = params.replace(")", "").split(",");
+    // mostramos por consola la operación entrante
+    console.log(`\n📝 Ejecutando operación: ${operation}`);
 
-        if (type === "new") {
-            let [pid, size] = params.map(Number);
-            let ptr = this.allocatePage(pid, size);
-        } else if (type === "use") {
-            let ptr = `P${params[0]}`;
-            this.usePage(ptr);
-        } else if (type === "delete") {
-            let ptr = `P${params[0]}`;
-            this.deletePage(ptr);
-        } else if (type === "kill") {
-            let pid = Number(params[0]);
-            this.killProcess(pid);
-        }
+    // Primero quitamos los espacios sobrantes
+    const command = operation.trim();
 
-        this.printStatus();
+    // Luego igualq q los demas separamos tipo (“new”,“use) de sus parametros “crudos”
+    const [type, rawParams] = command.split("(");
+
+    // ya luego ,  convertimos rawParams “1,500)” → [1, 500]
+    const params = rawParams
+      .replace(")", "")
+      .split(",")
+      .map(Number);
+
+    if (type === "new") {
+      // params = [pid, size]
+      const [pid, size] = params;
+
+      // aseguramos que exista la lista para este PID
+      if (!this.processTable.has(pid)) {
+        this.processTable.set(pid, []);
+      }
+
+      // asignamos la pagina y guardamos su ptr
+      const ptr = this.allocatePage(pid, size);
+      this.processTable.get(pid).push(ptr);
+
+    } else if (type === "use") {
+      // params = [ptrIndex]
+      const [ptrIndex] = params;
+
+      //Preguntar esta vr
+      // en OPT, igual que MRU, los punteros tienen P adelante 
+      const ptr = `P${ptrIndex}`;
+      this.usePage(ptr);
+
+    } else if (type === "delete") {
+      // params = [ptrIndex]
+      const [ptrIndex] = params;
+      const ptr = `P${ptrIndex}`;
+      this.deletePage(ptr);
+
+    } else if (type === "kill") {
+      // params = [pid]
+      const [pid] = params;
+      // matamos el proceso y todas sus páginas
+      if (this.processTable.has(pid)) {
+        this.processTable.get(pid).forEach(p => this.deletePage(p));
+        this.processTable.delete(pid);
+      }
     }
+
+    // mostramos estado tras cada operación
+    this.printStatus();
+  }
 
     allocatePage(pid, size) {
         let ptr = `P${this.ptrCounter++}`; // NUEVO: Siempre crea P1, P2, P3… sin repetir
@@ -86,6 +124,7 @@ class MMU_OPT {
     deletePage(ptr) {
         if (this.ram.has(ptr)) {
             this.ram.delete(ptr);
+            this.accessSequence = this.accessSequence.filter(p => p !== ptr);
             console.log(`🗑️ OPT: Página ${ptr} eliminada.`);
         } else {
             console.log(`⚠️ OPT: Página ${ptr} no encontrada.`);
@@ -93,9 +132,19 @@ class MMU_OPT {
     }
 
     killProcess(pid) {
-        console.log(`☠️ Eliminando proceso ${pid} y sus páginas.`);
-        let pagesToRemove = [...this.ram.entries()].filter(([ptr, p]) => p === pid);
-        pagesToRemove.forEach(([ptr]) => this.deletePage(ptr));
+
+        // Primero Sacamos solo los ptr (como P3 y P5 por ejemplo)
+        const pagesToRemove = [...this.ram.entries()]
+        .filter(([ptr,p]) => p === pid)
+        .map(([ptr]) => ptr);
+
+        // luego borramos cada pagina y la quitamos de accessSequence
+        pagesToRemove.forEach(ptr => this.deletePage(ptr));
+        this.accessSequence = this.accessSequence.filter(p => !pagesToRemove.includes(p));
+
+        // Alfinal borramos el registro del proceso
+        this.processTable.delete(pid);
+
     }
 
     printStatus() {
@@ -112,35 +161,6 @@ class MMU_OPT {
         console.log(`🛠️ Fragmentación interna total: ${this.fragmentacion} bytes`);
         const pct = ((this.thrashing / this.clock) * 100).toFixed(2);
         console.log(`⚠️ Porcentaje de thrashing: ${pct}%`);
+
     }
 }
-
-/*
-// 📜 Simulación con OPT
-const accessSequence = ["P1", "P2", "P3", "P4", "P1", "P3", "P5", "P2"]; // Secuencia futura de accesos
-
-const mmu = new MMU_OPT(3, accessSequence);
-const operations = [
-    "1 new(1,500)",
-    "2 use(1)",
-    "3 new(1,1000)",
-    "4 use(1)",
-    "5 use(2)",
-    "6 new(2,500)",
-    "7 use(3)",
-    "8 use(1)",
-    "9 new(2,50)",
-    "10 use(4)",
-    "11 delete(1)",
-    "12 use(2)",
-    "13 use(3)",
-    "14 delete(2)",
-    "15 kill(1)",
-    "16 kill(2)"
-];
-
-console.log("\n🔄 Iniciando simulación con OPT...");
-operations.forEach(op => mmu.executeOperation(op));
-mmu.printFinalStats(); // 🎯 Mostrar métricas finales
-console.log("\n✅ Simulación completada.");
-*/
