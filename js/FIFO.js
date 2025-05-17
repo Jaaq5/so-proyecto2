@@ -27,26 +27,24 @@ class MMU_FIFO {
             .replace(")", "")
             .split(",")
             .map(Number);
+
+        
         if (type === "new") {
+            
             //Params ya es un array de numeros como tal [pid, size]
             const [pid , size ] = params;
+            const ptr = this.allocatePage(pid, size);
 
-             // Aseguramos que exista la tabla para este PID
-        if (!this.processTable.has(pid)) {
-            this.processTable.set(pid, []);
-        
-        }
-        //Asignamos la pagina y guardamos el ptr
-        const ptr = this.allocatePage(pid, size);
-        this.processTable.get(pid).push(ptr);
         } else if (type === "use") {
-            //Params = [ptr]
-            const [ptr] = params;
+            const [idx] = params;
+            const ptr = `P${idx}`;
             this.usePage(ptr);
 
+
         } else if (type === "delete") {
-            // params = [ptr]
-            const [ptr] = params;
+
+            const [idx] = params;
+            const ptr = `P${idx}`;
             this.deletePage(ptr);
 
         } else if (type === "kill") {
@@ -58,102 +56,125 @@ class MMU_FIFO {
         this.printStatus();
     }
 
-    allocatePage(pid, size) {
-        console.log(`🆕 Asignando página para proceso ${pid} con tamaño ${size}B.`);
-        let ptr = this.ptrCounter++; // Puntero asignado en orden
-        if (!this.processTable.has(pid)) this.processTable.set(pid, []);
 
-        if (this.queue.length >= this.ramSize) {
-            let evictedPtr = this.queue.shift(); // FIFO: Expulsamos la más antigua
-            this.ram.delete(evictedPtr);
-            console.log(`🚨 FIFO: Página ${evictedPtr} reemplazada.`);
+
+    allocatePage(pid, size) {
+
+
+        const pagesNeeded = Math.ceil(size/4096);
+        const ptr = `P${this.ptrCounter++}`;
+
+
+
+        // registro unico del ptr
+        if (!this.processTable.has(pid)) this.processTable.set(pid, []);
+        this.processTable.get(pid).push(ptr);
+
+        // Se inicializa la lista de paginas 
+        if (!this.ptrToPages) this.ptrToPages = new Map();
+        this.ptrToPages.set(ptr, []);
+
+        console.log(`🆕 new(${pid}, ${size}B) → creando ${pagesNeeded} páginas…`);
+        for (let i = 0; i < pagesNeeded; i++) {
+            if (this.queue.length >= this.ramSize) {
+            const evicted = this.queue.shift();
+            this.ram.delete(evicted);
+            console.log(`🚨 FIFO: expulsada página ${evicted}`);
+            // ↪️ no borramos ptrToPages aqui, para poder faultear mas despues
+            }
+            const pageId = `${ptr}_pg${i}`;
+            this.queue.push(pageId);
+            this.ram.set(pageId, pid);
+            this.ptrToPages.get(ptr).push(pageId);
+            console.log(`   → asignada página física ${pageId}`);
         }
 
-        this.queue.push(ptr);
-        this.ram.set(ptr, pid);
-        console.log(`✅ FIFO: Página ${ptr} asignada a proceso ${pid}.`);
-
-        let desperdicio = (Math.ceil(size / 4096) * 4096) - size;
-        this.fragmentacion += desperdicio;
-        console.log(`Fragmentacion interna en  ptr: ${desperdicio} bytes`);
+        const wasted = pagesNeeded*4096 - size;
+        this.fragmentacion += wasted;
+        console.log(` Fragmentación interna ptr=${ptr}: ${wasted} bytes\n`);
 
         return ptr;
-    }
+}
+
+
+
+
+
 
     usePage(ptr) {
-        if (this.ram.has(ptr)) {
-            console.log(`🔵 FIFO: Página ${ptr} está en memoria real. (Hit)`);
+
+            
+        const pages = this.ptrToPages.get(ptr);
+        if (!pages) {
+
+            console.warn(`FIFO: ptr=${ptr} nunca existió.`);
+            return;
+        }
+        if (pages.length === 0) {
+            console.warn(`FIFO: ptr=${ptr} ya fue borrado.`);
+            return;
+        }
+        pages.forEach(pageId => {
+            if (this.ram.has(pageId)) {
+            console.log(`FIFO: Página ${pageId} (de ${ptr}) está en RAM (Hit)`);
             this.clock += 1;
-        } else {
-            console.log(`🔴 FIFO: Fallo de página ${ptr}. Está en memoria virtual.`);
+            } else {
+            console.log(`FIFO: Página ${pageId} (de ${ptr}) no está en RAM (Fault)`);
             this.clock += 5;
             this.thrashing += 5;
-        }
-        console.log(`⏳ Tiempo total: ${this.clock}s`);
-        console.log(`🔥 Thrashing acumulado: ${this.thrashing}s`);
+            }
+        });
+        console.log(`Tiempo total: ${this.clock}s`);
+        console.log(`Thrashing acumulado: ${this.thrashing}s`);
     }
+
+
 
     deletePage(ptr) {
-        if (this.ram.has(ptr)) {
-            this.ram.delete(ptr);
-            this.queue = this.queue.filter(p => p !== ptr);
-            console.log(`🗑️ FIFO: Página ${ptr} eliminada.`);
-        } else {
-            console.log(`⚠️ FIFO: Página ${ptr} no encontrada.`);
-        }
+
+
+        const pages = this.ptrToPages.get(ptr) || [];
+        pages.forEach(pageId => {
+            if (this.ram.delete(pageId)) {
+            this.queue = this.queue.filter(p => p !== pageId);
+            console.log(`FIFO: Página ${pageId} eliminada.`);
+            } else {
+            console.log(`FIFO: Página ${pageId} ya estaba en swap.`);
+            }
+        });
+
+        // limpia la lista de paginas del ptr
+        this.ptrToPages.delete(ptr);
+
     }
+
 
     killProcess(pid) {
-        if (this.processTable.has(pid)) {
-            console.log(`☠️ Eliminando proceso ${pid} y sus páginas.`);
-            this.processTable.get(pid).forEach(ptr => this.deletePage(ptr));
-            this.processTable.delete(pid);
-        } else {
-            console.log(`⚠️ Proceso ${pid} no encontrado.`);
-        }
+
+        const ptrs = this.processTable.get(pid) || [];
+
+        // borra todos los ptrs y sus paginas
+        ptrs.forEach(ptr => this.deletePage(ptr));
+        this.processTable.delete(pid);
+        console.log(`FIFO: Proceso ${pid} y todas sus páginas eliminados.`);
     }
 
+
+
     printStatus() {
-        console.log("\n🔍 Estado actual de la memoria:");
-        console.log(`📌 Punteros en cola FIFO: ${this.queue.join(", ")}`);
-        console.log(`📦 Páginas en RAM:`);
+        console.log("\n Estado actual de la memoria:");
+        console.log(` Punteros en cola FIFO: ${this.queue.join(", ")}`);
+        console.log(` Páginas en RAM:`);
         console.table([...this.ram]); // Muestra el Map en formato tabla
-        console.log(`🛠️ Fragmentación interna total: ${this.fragmentacion} bytes.`);
+        console.log(` Fragmentación interna total: ${this.fragmentacion} bytes.`);
         console.log("--------------------------------------------------");
     }
 
     printFinalStats() {
-        console.log("\n📊 Resumen de Simulación:");
-        console.log(`⏳ Tiempo total de simulación: ${this.clock}s`);
-        console.log(`🔥 Tiempo en fallos de página (thrashing): ${this.thrashing}s`);
+        console.log("\n Resumen de Simulación:");
+        console.log(` Tiempo total de simulación: ${this.clock}s`);
+        console.log(` Tiempo en fallos de página (thrashing): ${this.thrashing}s`);
         const pct = ((this.thrashing / this.clock) * 100).toFixed(2);
-        console.log(`⚠️ Porcentaje de thrashing: ${pct}%`);
+        console.log(` Porcentaje de thrashing: ${pct}%`);
     }
 }
-
-/*
-// 📜 Simulación con la secuencia EXACTA
-const mmu = new MMU_FIFO(3);
-const operations = [
-    "1 new(1,500)",
-    "2 use(1)",
-    "3 new(1,1000)",
-    "4 use(1)",
-    "5 use(2)",
-    "6 new(2,500)",
-    "7 use(3)",
-    "8 use(1)",
-    "9 new(2,50)",
-    "10 use(4)",
-    "11 delete(1)",
-    "12 use(2)",
-    "13 use(3)",
-    "14 delete(2)",
-    "15 kill(1)",
-    "16 kill(2)"
-];
-
-console.log("\n🔄 Iniciando simulación con FIFO...");
-operations.forEach(op => mmu.executeOperation(op));
-console.log("\n✅ Simulación completada.");
-*/
