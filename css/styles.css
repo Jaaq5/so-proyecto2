@@ -64,3 +64,21 @@ button {
 button:hover {
     background-color: #45a049;
 }
+
+table#tablaMemoria {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+table#tablaMemoria th,
+table#tablaMemoria td {
+  padding: 6px 10px;
+  border: 1px solid #ccc;
+  text-align: center;
+}
+
+table#tablaMemoria tbody {
+  max-height: none;
+  overflow-y: visible;
+}
