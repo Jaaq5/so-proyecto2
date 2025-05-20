@@ -1,0 +1,35 @@
+.ram-container {
+    padding: 10px;
+    font-family: sans-serif;
+}
+
+#ram-title {
+margin-bottom: 10px;
+}
+
+.ram-blocks {
+    display: flex;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    max-width: 100%;
+}
+
+.block {
+    width: 20px;
+    height: 30px;
+    margin-right: 2px;
+    border: 1px solid #ccc;
+    box-sizing: border-box;
+}
+
+.block.used-even {
+    background-color: yellow;
+}
+
+.block.used-odd {
+    background-color: green;
+}
+
+.block.unused {
+    background-color: #eee;
+}

@@ -1,0 +1,202 @@
+/* Base styles and resets */
+:root {
+    --primary-color: #007AFF;
+    --primary-dark: #0062cc;
+    --secondary-color: #5AC8FA;
+    --accent-color: #FF9500;
+    --success-color: #34C759;
+    --warning-color: #FF9500;
+    --error-color: #FF3B30;
+    --neutral-100: #F5F5F7;
+    --neutral-200: #E5E5EA;
+    --neutral-300: #D1D1D6;
+    --neutral-400: #C7C7CC;
+    --neutral-500: #AEAEB2;
+    --neutral-600: #8E8E93;
+    --neutral-700: #636366;
+    --neutral-800: #48484A;
+    --neutral-900: #3A3A3C;
+    --neutral-950: #1C1C1E;
+    --spacing-unit: 8px;
+    --border-radius: 8px;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    color: var(--neutral-900);
+    background-color: var(--neutral-100);
+    min-height: 100vh;
+    display: block;
+    justify-content: center;
+    align-items: center;
+    padding: calc(var(--spacing-unit) * 2);
+}
+
+/* Container and layout */
+.container {
+    width: 100%;
+    max-width: 800px;
+    background-color: white;
+    border-radius: var(--border-radius);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+    padding: calc(var(--spacing-unit) * 4);
+}
+
+
+header {
+    text-align: center;
+    margin-bottom: calc(var(--spacing-unit) * 5);
+}
+
+h1 {
+    font-size: 2.5rem;
+    font-weight: 600;
+    color: var(--neutral-950);
+    margin-bottom: calc(var(--spacing-unit) * 2);
+    line-height: 1.2;
+}
+
+h2 {
+    font-size: 1.5rem;
+    font-weight: 500;
+    color: var(--neutral-700);
+    line-height: 1.3;
+}
+
+/* Form styles */
+form {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing-unit) * 3);
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: calc(var(--spacing-unit));
+}
+
+label {
+    font-weight: 500;
+    color: var(--neutral-800);
+    font-size: 1.1rem;
+}
+
+input, select {
+    padding: calc(var(--spacing-unit) * 1.5);
+    border-radius: var(--border-radius);
+    border: 2px solid var(--neutral-300);
+    font-size: 1rem;
+    transition: var(--transition-standard);
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
+    background-color: white;
+}
+
+
+
+input:focus, select:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.15);
+}
+
+button {
+    background-color: var(--primary-color);
+    color: white;
+    border: none;
+    padding: calc(var(--spacing-unit) * 1.5);
+    border-radius: var(--border-radius);
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition-standard);
+    margin-top: calc(var(--spacing-unit) * 2);
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+}
+
+button::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(255, 255, 255, 0.1);
+    transform: translateY(100%);
+    transition: transform 0.3s ease;
+}
+
+button:hover {
+    background-color: var(--primary-dark);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 122, 255, 0.25);
+}
+
+button:hover::after {
+    transform: translateY(0);
+}
+
+button:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 6px rgba(0, 122, 255, 0.15);
+}
+
+/* Results section */
+.hidden {
+    display: none;
+}
+
+#results {
+margin-top: calc(var(--spacing-unit) * 4);
+padding: calc(var(--spacing-unit) * 3);
+border-radius: var(--border-radius);
+background-color: var(--neutral-100);
+border: 1px solid var(--neutral-200);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .container {
+        padding: calc(var(--spacing-unit) * 3);
+    }
+
+    h1 {
+        font-size: 2rem;
+    }
+
+    h2 {
+        font-size: 1.25rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: calc(var(--spacing-unit) * 2);
+    }
+
+    h1 {
+        font-size: 1.75rem;
+    }
+
+    h2 {
+        font-size: 1.1rem;
+    }
+
+    form {
+        gap: calc(var(--spacing-unit) * 2);
+    }
+}

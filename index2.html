@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proyecto 02 Sistemas Operativos</title>
+  <link rel="stylesheet" href="css/styles2.css" />
+  <link rel="stylesheet" href="css/interfazRam.css" />
+
+
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>Proyecto 02 Sistemas Operativos</h1>
+      <h2>Para iniciar el programa ingrese lo siguiente:</h2>
+    </header>
+
+    <main>
+      <form id="simulation-form">
+        <div class="form-group">
+          <label for="seed">Semilla:</label>
+          <input type="text" id="seed" name="seed" required>
+        </div>
+
+        <div class="form-group">
+          <label for="algorithm">Algoritmo:</label>
+          <select id="algorithm" name="algorithm">
+            <option value="FIFO">FIFO</option>
+            <option value="SC">SC</option>
+            <option value="MRU">MRU</option>
+            <option value="RND">RND</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="process-count">Número de procesos (P):</label>
+          <select id="process-count" name="process-count">
+            <option value="10">10</option>
+            <option value="50" >50</option>
+            <option value="100">100</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="operation-count">Número total de operaciones (N):</label>
+          <select id="operation-count" name="operation-count">
+            <option value="500" >500</option>
+            <option value="1000">1000</option>
+            <option value="5000">5000</option>
+          </select>
+        </div>
+
+        <button onclick="generarEscenario()">Generar archivo</button>
+        <button onclick="descargarArchivo()">Descargar archivo</button>
+        <div class="form-group">
+          <button type="button" id="cargarArchivo">Cargar archivo txt</button>
+          <input type="file" id="fileInput" accept=".txt" style="display: none;" />
+        </div>
+        <button onclick="alert('No hago nada')">Iniciar ejecucion</button>
+
+      </form>
+    </main>
+
+    <footer>
+      <div id="results" class="hidden">
+        <!-- Results will be populated by JavaScript -->
+      </div>
+    </footer>
+  </div>
+
+
+   <div class="ram-container">
+    <h3 id="ram-opt">RAM - [OPT]</h3>
+    <div class="ram-blocks" id="ram-blocks-opt"></div>
+  </div>
+
+  <div class="ram-container">
+    <h3 id="ram-alg">RAM - [ALG]</h3>
+    <div class="ram-blocks" id="ram-blocks-alg"></div>
+  </div>
+
+  <script src="js/interfazRam.js"></script>
+  <script src="js/app2.js"></script>
+  <script src="pruebaRandom.js"></script>
+
+</body>
+</html>
