@@ -10,6 +10,11 @@ class MMU_MRU {
     
         //Necesitamos la misma tabla de procesos que en FIFO
         this.processTable = new Map();
+
+        //Esto se necesita para implementar multipagina 
+
+        this.ptrToPages    = new Map();
+        this.ptrCounter    = 1;
     
     }
 
@@ -65,60 +70,140 @@ class MMU_MRU {
     this.printStatus();
   }
 
-    allocatePage(pid, size) {
-        let ptr = `P${this.ram.size + 1}`; // Generamos un puntero para la nueva página
-        let desperdicio = (Math.ceil(size / 4096) * 4096) - size; // Calcular fragmentación interna
-        this.fragmentacion += desperdicio;
-        console.log(`🛠️ Fragmentación interna en ${ptr}: ${desperdicio} bytes.`);
+    
+  allocatePage(pid, size) {
 
-        if (this.ram.size >= this.ramSize) {
-            let evictedPtr = this.accessOrder.pop(); // Expulsar la más recientemente usada?
-            this.ram.delete(evictedPtr);
-            console.log(`🚨 MRU: Página ${evictedPtr} reemplazada.`);
+
+
+    const pagesNeeded = Math.ceil(size / 4096);
+    const ptr = `P${this.ptrCounter++}`;
+
+      // Registro del ptr en el proceso
+    if (!this.processTable.has(pid)) this.processTable.set(pid, []);
+    this.processTable.get(pid).push(ptr);
+
+      // Inicializar lista de páginas
+    this.ptrToPages.set(ptr, []);
+
+      // Fragmentación interna
+    const wasted = pagesNeeded * 4096 - size;
+    this.fragmentacion += wasted;
+    console.log(`🛠️ Fragmentación interna ptr=${ptr}: ${wasted} bytes.`);
+
+    for (let i = 0; i < pagesNeeded; i++) {
+      const pageId = `${ptr}_pg${i}`;
+
+      // Evicción MRU si RAM llena
+      if (this.accessOrder.length >= this.ramSize) {
+
+        const evicted = this.accessOrder.pop();
+        this.ram.delete(evicted);
+        this.clock += 5;
+        this.thrashing += 5;
+        console.log(`🚨 MRU: expulsada página ${evicted}`);
+
+
+      } else {
+
+        this.clock += 1;
+      }
+
+        // Asignar y trackear
+      this.ram.set(pageId, pid);
+      this.accessOrder.push(pageId);
+      this.ptrToPages.get(ptr).push(pageId);
+      
+      console.log(`✅ MRU: asignada página ${pageId} a proceso ${pid}`);
+      }
+
+    return ptr;
+  }
+
+
+
+
+  usePage(ptr) {
+
+    
+    const pages = this.ptrToPages.get(ptr) || [];
+    if (!pages.length) {
+      console.warn(`MRU: ptr=${ptr} no existe o ya fue borrado.`);
+      return;
+    }
+
+    // Obtener pid para recarga
+
+    //const pid = this.processTable.get(
+    //  [...this.processTable].find(([p, arr]) => arr.includes(ptr))[0]
+    //);
+
+  const pid = [...this.processTable.keys()]
+
+  .find(p => this.processTable.get(p).includes(ptr));
+
+
+  if (pid === undefined) {
+
+    console.warn(`MRU: ptr=${ptr} sin proceso asociado.`);
+    return;
+  }
+
+
+    pages.forEach(pageId => {
+      if (this.ram.has(pageId)) {
+        console.log(` MRU HIT: ${pageId}`);
+        this.clock += 1;
+
+        // Mover al final (mas reciente)
+        this.accessOrder = this.accessOrder.filter(p => p !== pageId);
+        this.accessOrder.push(pageId);
+      } else {
+        console.log(` MRU FAULT: ${pageId}`);
+        this.clock += 5;
+        this.thrashing += 5;
+        // Expulsar MRU si hace falta
+        if (this.accessOrder.length >= this.ramSize) {
+          const evicted = this.accessOrder.pop();
+          this.ram.delete(evicted);
+          console.log(` MRU (use): expulsada ${evicted}`);
         }
+        // Recargar
+        this.ram.set(pageId, pid);
+        this.accessOrder.push(pageId);
+        console.log(`   → recargada ${pageId} para proceso ${pid}`);
+      }
+    });
 
-        this.ram.set(ptr, pid);
-        this.accessOrder.push(ptr);
-        console.log(`✅ MRU: Página ${ptr} asignada a proceso ${pid}.`);
-        return ptr;
+    console.log(`Tiempo: ${this.clock}s  Thrashing: ${this.thrashing}s`);
+  }
+
+
+  deletePage(ptr) {
+
+    const pages = this.ptrToPages.get(ptr) || [];
+    pages.forEach(pageId => {
+
+      if (this.ram.delete(pageId)) {
+        this.accessOrder = this.accessOrder.filter(p => p !== pageId);
+        console.log(` MRU: página ${pageId} eliminada`);
+      }
+    });
+    this.ptrToPages.delete(ptr);
+    // también quitar ptr de processTable
+    for (const arr of this.processTable.values()) {
+      const idx = arr.indexOf(ptr);
+      if (idx !== -1) { arr.splice(idx,1); break; }
     }
+  }
 
-    usePage(ptr) {
-        if (this.ram.has(ptr)) {
-            console.log(`🔵 HIT: Página ${ptr} está en RAM.`);
-            this.clock += 1;
 
-            // :white_check_mark: Corrección: Mover la página al FINAL como "más recientemente usada"
-            this.accessOrder = this.accessOrder.filter(p => p !== ptr);
-            this.accessOrder.push(ptr);
+  killProcess(pid) {
+    const ptrs = this.processTable.get(pid) || [];
+    ptrs.forEach(ptr => this.deletePage(ptr));
+    this.processTable.delete(pid);
+    console.log(`☠️ MRU: proceso ${pid} eliminado`);
+  }
 
-        } else {
-            console.log(`🔴 FAULT: Página ${ptr} no está en RAM.`);
-            this.clock += 5;
-            this.thrashing += 5;
-        }
-
-        console.log(`⏳ Tiempo total: ${this.clock}s`);
-        console.log(`🔥 Thrashing acumulado: ${this.thrashing}s`);
-    }
-
-    deletePage(ptr) {
-        if (this.ram.has(ptr)) {
-            this.ram.delete(ptr);
-            this.accessOrder = this.accessOrder.filter(p => p !== ptr);
-            console.log(`🗑️ MRU: Página ${ptr} eliminada.`);
-        } else {
-            console.log(`⚠️ MRU: Página ${ptr} no encontrada.`);
-        }
-    }
-
-    killProcess(pid) {
-        console.log(`☠️ Eliminando proceso ${pid} y sus páginas.`);
-        let pagesToRemove = [...this.ram.entries()].filter(([ptr, p]) => p === pid);
-        pagesToRemove.forEach(([ptr]) => this.deletePage(ptr));
-        this.processTable.delete(pid);  
-
-    }
 
     printStatus() {
         console.log("\n🔍 Estado actual de la memoria:");
