@@ -57,77 +57,102 @@ class MMU_FIFO {
     }
 
 
-
     allocatePage(pid, size) {
 
 
-        const pagesNeeded = Math.ceil(size/4096);
+        const pagesNeeded = Math.ceil(size / 4096);
         const ptr = `P${this.ptrCounter++}`;
 
-
-
-        // registro unico del ptr
+        // Registro del ptr en su proceso
         if (!this.processTable.has(pid)) this.processTable.set(pid, []);
         this.processTable.get(pid).push(ptr);
 
-        // Se inicializa la lista de paginas 
+        // Inicializar lista de páginas para este ptr
         if (!this.ptrToPages) this.ptrToPages = new Map();
+
         this.ptrToPages.set(ptr, []);
 
         console.log(`🆕 new(${pid}, ${size}B) → creando ${pagesNeeded} páginas…`);
+
         for (let i = 0; i < pagesNeeded; i++) {
+
+            const pageId = `${ptr}_pg${i}`;
+
             if (this.queue.length >= this.ramSize) {
+
+
+            // SI FALLA: expulsar la primera de la cola
             const evicted = this.queue.shift();
             this.ram.delete(evicted);
+            this.clock += 5;           // +5s por   fallo al traer
+            this.thrashing += 5;
             console.log(`🚨 FIFO: expulsada página ${evicted}`);
-            // ↪️ no borramos ptrToPages aqui, para poder faultear mas despues
+            } else {
+            // ÉXITO: hay espacio libre
+            this.clock += 1;           // +1 s por hit
             }
-            const pageId = `${ptr}_pg${i}`;
+
+            // Asignar la nueva page
             this.queue.push(pageId);
             this.ram.set(pageId, pid);
             this.ptrToPages.get(ptr).push(pageId);
             console.log(`   → asignada página física ${pageId}`);
         }
 
-        const wasted = pagesNeeded*4096 - size;
+        // frag interna
+        const wasted = pagesNeeded * 4096 - size;
         this.fragmentacion += wasted;
         console.log(` Fragmentación interna ptr=${ptr}: ${wasted} bytes\n`);
 
         return ptr;
-}
-
-
-
-
-
-
-    usePage(ptr) {
-
-            
-        const pages = this.ptrToPages.get(ptr);
-        if (!pages) {
-
-            console.warn(`FIFO: ptr=${ptr} nunca existió.`);
-            return;
-        }
-        if (pages.length === 0) {
-            console.warn(`FIFO: ptr=${ptr} ya fue borrado.`);
-            return;
-        }
-        pages.forEach(pageId => {
-            if (this.ram.has(pageId)) {
-            console.log(`FIFO: Página ${pageId} (de ${ptr}) está en RAM (Hit)`);
-            this.clock += 1;
-            } else {
-            console.log(`FIFO: Página ${pageId} (de ${ptr}) no está en RAM (Fault)`);
-            this.clock += 5;
-            this.thrashing += 5;
-            }
-        });
-        console.log(`Tiempo total: ${this.clock}s`);
-        console.log(`Thrashing acumulado: ${this.thrashing}s`);
     }
 
+        
+
+
+
+
+
+usePage(ptr) {
+
+        
+    // Primero es obtener el PID de este ptr
+    let pid = null;
+    for (const [p, ptrs] of this.processTable) {
+        if (ptrs.includes(ptr)) { pid = p; break; }
+    }
+
+    const pages = this.ptrToPages.get(ptr);
+    if (!pages || pages.length === 0) {
+        console.warn(`FIFO: ptr=${ptr} no existe o ya fue borrado.`);
+        return;
+    }
+
+    pages.forEach(pageId => {
+        if (this.ram.has(pageId)) {
+        console.log(`FIFO: Página ${pageId} (de ${ptr}) está en RAM (Hit)`);
+        this.clock += 1;
+        } else {
+        console.log(`FIFO: Página ${pageId} (de ${ptr}) no está en RAM (Fault)`);
+        this.clock += 5;
+        this.thrashing += 5;
+
+        if (this.queue.length >= this.ramSize) {
+            const evicted = this.queue.shift();
+            this.ram.delete(evicted);
+            console.log(`FIFO (use): expulsada página ${evicted}`);
+        }
+
+        // aqui se recarga con el PID correcto
+        this.queue.push(pageId);
+        this.ram.set(pageId, pid);
+        console.log(`   → cargada página ${pageId} en RAM`);
+        }
+    });
+
+    console.log(`Tiempo total: ${this.clock}s`);
+    console.log(`Thrashing acumulado: ${this.thrashing}s`);
+}
 
 
     deletePage(ptr) {
