@@ -2,7 +2,8 @@
  * Variable global que almacena el contenido generado.
  * @type {string}
  */
-let contenidoGenerado = "";
+let contenidoGeneradoParaMemoria = null;
+let contenidoGeneradoParaArchivo = null;
 
 /**
  * Genera una función generadora de números pseudoaleatorios
@@ -94,7 +95,7 @@ function generarEscenario() {
 
     // Forzar primer new para pid = 1
     const procesoInicial = procesos.find(p => p.pid === 1);
-    const sizeInicial = Math.floor(rand() * 16000) + 1;
+    const sizeInicial = Math.floor(rand() * 9999) + 1;
     const ptrInicial = ptrCounter++;
     procesoInicial.ptrs.push(ptrInicial);
     procesoInicial.ops.push(`new(1,${sizeInicial}) // ptr = ${ptrInicial}`);
@@ -139,7 +140,7 @@ function generarEscenario() {
             const seleccionada = randomFromArray(opciones, rand);
 
             if (seleccionada === "new") {
-                const size = Math.floor(rand() * 16000) + 1;
+                const size = Math.floor(rand() * 9999) + 1;
                 const ptr = ptrCounter++;
                 proceso.ptrs.push(ptr);
 
@@ -197,8 +198,14 @@ function generarEscenario() {
     console.log(resultadoCompleto); // Imprime todo por consola
 
     // Guardar solo las instrucciones limpias en memoria
-    contenidoGenerado = final.map(({ op }) => {
+    contenidoGeneradoParaMemoria = final.map(({ op }) => op.split("//")[0].trim());
+
+    // Guardar solo las instrucciones en archivo
+    contenidoGeneradoParaArchivo = final.map(({ op }) => {
         return op.split("//")[0].trim(); // Quita el comentario y espacios extra
     }).join("\n");
+
+    document.getElementById('iniciarEjecucionBtn').disabled = false;
+
 
 }

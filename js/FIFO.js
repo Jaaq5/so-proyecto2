@@ -20,19 +20,19 @@ class MMU_FIFO {
 
         //Esto lo dejamos
         console.log(`\n📝 Ejecutando operación: ${operation}`);
-        //Limpiar espacios 
+        //Limpiar espacios
         const command = operation.trim();
         //Dabamos un error de redeclaracion , por eso se puso rawParams
         const [type, rawParams] = command.split("(");
-        //Params es un numer limpio 
+        //Params es un numer limpio
         const params = rawParams
             .replace(")", "")
             .split(",")
             .map(Number);
 
-        
+
         if (type === "new") {
-            
+
             //Params ya es un array de numeros como tal [pid, size]
             const [pid , size ] = params;
             const ptr = this.allocatePage(pid, size);
@@ -66,13 +66,13 @@ class MMU_FIFO {
         const pagesNeeded = Math.ceil(size/4096);
         const ptr = `P${this.ptrCounter++}`;
 
-        
+
 
         // registro unico del ptr
         if (!this.processTable.has(pid)) this.processTable.set(pid, []);
         this.processTable.get(pid).push(ptr);
 
-        // Se inicializa la lista de paginas 
+        // Se inicializa la lista de paginas
         if (!this.ptrToPages) this.ptrToPages = new Map();
         this.ptrToPages.set(ptr, []);
 
@@ -107,7 +107,7 @@ class MMU_FIFO {
 
     usePage(ptr) {
 
-            
+
         const pages = this.ptrToPages.get(ptr);
         if (!pages) {
 
@@ -216,7 +216,7 @@ class MMU_FIFO {
             tabla.appendChild(fila);
         });
 
-        
+
 
     }
 
@@ -241,4 +241,4 @@ class MMU_FIFO {
         const pct = ((this.thrashing / this.clock) * 100).toFixed(2);
         console.log(` Porcentaje de thrashing: ${pct}%`);
     }
-}
+}window.FIFO = MMU_FIFO;

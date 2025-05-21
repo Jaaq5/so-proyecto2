@@ -1,5 +1,5 @@
 class MMU_OPT {
-    constructor(ramSize, accessSequence) {
+    constructor(ramSize, accessSequence = []) {
         console.log(`🔧 Inicializando MMU con ${ramSize} páginas en memoria.`);
         this.ramSize = ramSize;
         this.ram = new Map();
@@ -163,4 +163,4 @@ class MMU_OPT {
         console.log(`⚠️ Porcentaje de thrashing: ${pct}%`);
 
     }
-}
+}window.OPT = MMU_OPT;

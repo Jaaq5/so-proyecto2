@@ -116,7 +116,7 @@ class MMU_RND {
         const pct = ((this.thrashing / this.clock) * 100).toFixed(2);
         console.log(`⚠️ Porcentaje de thrashing: ${pct}%`);
     }
-}
+}window.RND = MMU_RND;
 
 /*
 // 📜 Simulación con RND

@@ -135,4 +135,4 @@ class MMU_MRU {
         const pct = ((this.thrashing / this.clock) * 100).toFixed(2);
         console.log(`⚠️ Porcentaje de thrashing: ${pct}%`);
     }
-}
+}window.MRU = MMU_MRU;

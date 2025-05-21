@@ -135,7 +135,7 @@ executeOperation(operation) {
         const pct = ((this.thrashing / this.clock) * 100).toFixed(2);
         console.log(`⚠️ Porcentaje de thrashing: ${pct}%`);
     }
-}
+}window.SC = MMU_SC;
 
 /*
 // 📜 Simulación con SC
