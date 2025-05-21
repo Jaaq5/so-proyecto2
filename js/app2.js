@@ -156,11 +156,11 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
 
-  // Botón de "Generar escenario"
+  // Botón de "Iniciar"
   iniciarEjecucionBtn.addEventListener('click', () => {
     const seed = seedInput.value.trim();
-    if (seed === "" || isNaN(seed)) {
-      alert("Por favor, ingrese una semilla valida (un numero)");
+    if (operacionesDesdeArchivo !== NULL && contenidoGeneradoParaMemoria == NULL) {
+      //alert("Por favor, ingrese una semilla valida (un numero)");
       return; // Detener la ejecución si la semilla no es válida
     }
 
@@ -204,6 +204,7 @@ function ejecutarSimulacion() {
         </head>
         <body>
             <h2>Comparación de RAM - ${algorithmSelect}</h2>
+            <h3>Hola</h3>
             <h3>Estado de la Simulación</h3>
             <div class="status-container">
                 <table>
@@ -232,6 +233,20 @@ function ejecutarSimulacion() {
                         <tr><td><strong>Fragmentación:</strong> <span id="fragmentSelected">0B</span></td></tr>
                         <tr><td><strong>Thrashing:</strong> <span id="thrashingSelected">0%</span></td></tr>
                     </tbody>
+                </table>
+                <!-- TABLA DE ESTADO DE MEMORIA -->
+                <h3>Estado final de la Memoria</h3>
+                <table id="tablaMemoria" border="1">
+                <thead>
+                <tr>
+                <th>Página</th>
+                <th>Proceso</th>
+                <th>Estado</th>
+                </tr>
+                </thead>
+                <tbody>
+                <!-- Aquí se insertarán dinámicamente las filas -->
+                </tbody>
                 </table>
             </div>
 
@@ -285,7 +300,7 @@ function ejecutarSimulacion() {
                              selectedRamUsage: ((mmuSelected.queue?.length || 0) / (mmuSelected.ramSize || 1) * 100).toFixed(2)
       }, "*");
 
-      setTimeout(ejecutarPaso, 53);
+      setTimeout(ejecutarPaso, 5);
     } else {
       mmuOPT.printFinalStats();
       mmuSelected.printFinalStats();
@@ -309,8 +324,6 @@ function procesarArchivo(contenido) {
   console.log("📂 Archivo cargado:", operacionesDesdeArchivo);
 
   document.getElementById('iniciarEjecucionBtn').disabled = false;
-
-
 }
 
 
