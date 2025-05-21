@@ -98,11 +98,41 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function runSimulation(ops, MMUClass) {
   let seqOpt = [];
+
+
+
   if (MMUClass === MMU_OPT) {
-    seqOpt = ops
-      .filter(l => l.includes("use("))
-      .map(l => "P" + l.match(/use\((\d+)\)/)[1]);
+    const ptrToPages = new Map();
+    let ptrCounter = 1;
+
+    // 1) Generar ptr → [subpáginas]
+    ops.forEach(op => {
+      if (op.startsWith("new(")) {
+        // extraigo pid y size correctamente:
+        const [, pidStr, sizeStr] = op.match(/new\((\d+),\s*(\d+)\)/);
+        const size = Number(sizeStr);
+        const pagesNeeded = Math.ceil(size / 4096);
+
+        const ptr = `P${ptrCounter++}`;
+        const pages = Array.from(
+          { length: pagesNeeded },
+          (_, i) => `${ptr}_pg${i}`
+        );
+        ptrToPages.set(ptr, pages);
+      }
+    });
+
+    // 2) A partir de los use(...) construyo la secuencia de page-ids
+    seqOpt = [];
+    ops.forEach(op => {
+      if (op.startsWith("use(")) {
+        const ptr = "P" + op.match(/use\((\d+)\)/)[1];
+        const pages = ptrToPages.get(ptr) || [];
+        seqOpt.push(...pages);
+      }
+    });
   }
+
 
   const mmu = MMUClass === MMU_OPT
     ? new MMU_OPT(3, seqOpt)

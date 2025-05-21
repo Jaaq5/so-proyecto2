@@ -277,7 +277,42 @@ function ejecutarSimulacion() {
   </html>
   `);
 
-  const mmuOPT = new OPT(10, []);
+    // Crear la secuencia futura de accesos para el algoritmo OPT
+  const ptrToPages = new Map();
+  let ptrCounter = 1;
+  const seqOpt = [];
+
+  // Paso 1: detectar las páginas que se van a crear
+  ops.forEach(op => {
+    if (op.startsWith("new(")) {
+      const match = op.match(/new\((\d+),\s*(\d+)\)/);
+      if (!match) return;
+      const size = Number(match[2]);
+      const pages = Math.ceil(size / 4096);
+      const ptr = `P${ptrCounter++}`;
+      const subpages = Array.from({ length: pages }, (_, i) => `${ptr}_pg${i}`);
+      ptrToPages.set(ptr, subpages);
+    }
+  });
+
+  // Paso 2: detectar las páginas que se van a usar en orden
+  ops.forEach(op => {
+    if (op.startsWith("use(")) {
+      const match = op.match(/use\((\d+)\)/);
+      if (!match) return;
+      const ptr = `P${match[1]}`;
+      const subpages = ptrToPages.get(ptr) || [];
+      seqOpt.push(...subpages);
+    }
+  });
+
+  const mmuOPT = new OPT(10, seqOpt);
+
+
+
+
+
+
   const mmuSelected = new (window[algorithmSelect])(10);
 
   let index = 0;

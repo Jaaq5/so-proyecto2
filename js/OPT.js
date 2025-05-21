@@ -15,6 +15,12 @@ class MMU_OPT {
 
     this.ptrToWasted = new Map();
 
+    this.futureAccesses = [...accessSequence];
+    this.currentIndex = 0;
+
+
+
+
   }
 
 
@@ -103,8 +109,6 @@ class MMU_OPT {
     // crear cada pag
     for (let i = 0; i < pagesNeeded; i++) {
       const pageId = `${ptr}_pg${i}`;
-      this.accessSequence.push(pageId);
-
       // si RAM llena, expulsar la que OPT diga
       if (this.ram.size >= this.ramSize) {
         const evicted = this.findOptimalReplacement();
@@ -140,9 +144,14 @@ class MMU_OPT {
     .find(p => this.processTable.get(p).includes(ptr));
 
     pages.forEach(pageId => {
-      // Primero, se quita esta página de la secuencia futura si ya estaba ahí
-      const idx = this.accessSequence.indexOf(pageId);
-      if (idx !== -1) this.accessSequence.splice(idx, 1);
+
+      this.currentIndex++;
+
+
+
+
+
+
 
       if (this.ram.has(pageId)) {
         // HITTTTT
@@ -163,8 +172,6 @@ class MMU_OPT {
 
         this.ram.set(pageId, pid);
 
-        this.accessSequence.push(pageId);
-
         console.log(`recargada ${pageId} para proceso ${pid}`);
       }
     });
@@ -176,13 +183,16 @@ class MMU_OPT {
 
 
   findOptimalReplacement() {
+    
     let futureAccesses = new Map();
 
-    this.ram.forEach((_, ptr) => {
-      let nextUse = this.accessSequence.indexOf(ptr);
-      futureAccesses.set(ptr, nextUse === -1 ? Infinity : nextUse);
+    this.ram.forEach((_, pageId) => {
+    
+      const nextUse = this.futureAccesses.indexOf(pageId, this.currentIndex);
+      futureAccesses.set(pageId, nextUse === -1 ? Infinity : nextUse);
     });
 
+ 
     let evictedPtr = [...futureAccesses.entries()].sort((a, b) => b[1] - a[1])[0][0];
     return evictedPtr;
   }
@@ -201,7 +211,7 @@ class MMU_OPT {
     const pages = this.ptrToPages.get(ptr) || [];
     pages.forEach(pageId => {
       if (this.ram.delete(pageId)) {
-        this.accessSequence = this.accessSequence.filter(p => p !== pageId);
+        //this.accessSequence = this.accessSequence.filter(p => p !== pageId);
         console.log(`OPT: pagina ${pageId} eliminada.`);
       }
     });
