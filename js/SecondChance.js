@@ -1,13 +1,13 @@
 class MMU_SC {
     constructor(ramSize) {
-        console.log(`🔧 Inicializando MMU con ${ramSize} páginas en memoria.`);
+        console.log(`Inicializando MMU con ${ramSize} páginas en memoria.`);
         this.ramSize = ramSize;
         this.ram = new Map();
         this.queue = [];
         this.references = new Map();
-        this.clock = 0;        // Tiempo total de simulación
-        this.thrashing = 0;    // Tiempo perdido en fallos de páginas
-        this.fragmentacion = 0; // Bytes desperdiciados por fragmentación interna
+        this.clock = 0;        
+        this.thrashing = 0;    
+        this.fragmentacion = 0; 
         this.processTable = new Map(); 
         
         // para numerar los ptrs
@@ -29,7 +29,7 @@ executeOperation(operation) {
     //MISMO PROCESO DE LO DEMAS 
 
 
-    console.log(`\n📝 Ejecutando operación: ${operation}`);
+    console.log(`\n Ejecutando operacion: ${operation}`);
 
     const command = operation.trim();
     const [type, rawParams] = command.split("(");
@@ -43,7 +43,6 @@ executeOperation(operation) {
       const [pid, size] = params;
 
       if (!this.processTable.has(pid)) this.processTable.set(pid, []);
-      // Creamos la página
       const ptr = this.allocatePage(pid, size);
       this.processTable.get(pid).push(ptr);
 
@@ -57,6 +56,7 @@ executeOperation(operation) {
       this.usePage(ptr);
 
     } else if (type === "delete") {
+
       const [ptrIndex] = params;
       const ptr = `P${ptrIndex}`;
       this.deletePage(ptr);
@@ -79,18 +79,17 @@ executeOperation(operation) {
         const pagesNeeded = Math.ceil(size / 4096);
         const ptr = `P${this.ptrCounter++}`;
 
-        // 1) Registro
+        // Registro
         if (!this.processTable.has(pid)) this.processTable.set(pid, []);
         this.processTable.get(pid).push(ptr);
         this.ptrToPages.set(ptr, []);
 
-        // 2) Fragmentación
+        // Frag
         const wasted = pagesNeeded * 4096 - size;
         this.fragmentacion += wasted;
         this.ptrToWasted.set(ptr, wasted);
         console.log(` Fragmentación interna ptr=${ptr}: ${wasted} bytes.`);
 
-        // 3) Crear cada subpágina y aplicar SC
         for (let i = 0; i < pagesNeeded; i++) {
             const pageId = `${ptr}_pg${i}`;
 
@@ -103,7 +102,7 @@ executeOperation(operation) {
                 this.queue.push(cand);
                 } else {
                 this.ram.delete(cand);
-                console.log(`SC: expulsada página ${cand}`);
+                console.log(`SC: expulsada pagina ${cand}`);
                 this.clock += 5;
                 this.thrashing += 5;
                 break;
@@ -113,7 +112,7 @@ executeOperation(operation) {
             this.clock += 1;
             }
 
-            // Asignar la subpágina
+            // Asignar la subp
             this.ram.set(pageId, pid);
             this.queue.push(pageId);
             this.references.set(pageId, true);
@@ -141,7 +140,7 @@ executeOperation(operation) {
         pages.forEach(pageId => {
 
             if (this.ram.has(pageId)) {
-            console.log(`🔵 SC HIT: ${pageId}`);
+            console.log(` SC HIT: ${pageId}`);
             this.clock += 1;
             this.references.set(pageId, true);
             } else {
@@ -149,7 +148,7 @@ executeOperation(operation) {
             this.clock += 5;
             this.thrashing += 5;
 
-            // expulsión Second-Chance urgente
+            // expl Second-Chance urgente
             while (this.queue.length >= this.ramSize) {
 
                 const cand = this.queue.shift();
@@ -158,7 +157,7 @@ executeOperation(operation) {
                 this.queue.push(cand);
                 } else {
                 this.ram.delete(cand);
-                console.log(`🚨 SC (use): expulsada ${cand}`);
+                console.log(` SC (use): expulsada ${cand}`);
                 break;
                 }
             }
@@ -166,7 +165,7 @@ executeOperation(operation) {
             this.ram.set(pageId, pid);
             this.queue.push(pageId);
             this.references.set(pageId, true);
-            console.log(`   → recargada ${pageId} para proceso ${pid}`);
+            console.log(`recargada ${pageId} para proceso ${pid}`);
             }
         });
 
@@ -215,46 +214,20 @@ executeOperation(operation) {
 
 
     printStatus() {
-        console.log("\n🔍 Estado actual de la memoria:");
+        console.log("\nEstado actual de la memoria:");
         console.table([...this.ram]);
-        console.log(`🛠️ Fragmentación interna total: ${this.fragmentacion} bytes.`);
+        console.log(`Fragmentación interna total: ${this.fragmentacion} bytes.`);
         console.log("--------------------------------------------------");
     }
 
     printFinalStats() {
-        console.log("\n📊 Resumen de Simulación:");
-        console.log(`⏳ Tiempo total de simulación: ${this.clock}s`);
-        console.log(`🔥 Tiempo en fallos de página (thrashing): ${this.thrashing}s`);
-        console.log(`🛠️ Fragmentación interna total: ${this.fragmentacion} bytes`);
+        console.log("\nResumen de Simulación:");
+        console.log(`Tiempo total de simulación: ${this.clock}s`);
+        console.log(`Tiempo en fallos de página (thrashing): ${this.thrashing}s`);
+        console.log(`Fragmentación interna total: ${this.fragmentacion} bytes`);
         const pct = ((this.thrashing / this.clock) * 100).toFixed(2);
-        console.log(`⚠️ Porcentaje de thrashing: ${pct}%`);
+        console.log(`Porcentaje de thrashing: ${pct}%`);
     }
 }
 
-/*
-// 📜 Simulación con SC
-const mmu = new MMU_SC(3);
-const operations = [
-    "1 new(1,500)",
-    "2 use(1)",
-    "3 new(1,1000)",
-    "4 use(1)",
-    "5 use(2)",
-    "6 new(2,500)",
-    "7 use(3)",
-    "8 use(1)",
-    "9 new(2,50)",
-    "10 use(4)",
-    "11 delete(1)",
-    "12 use(2)",
-    "13 use(3)",
-    "14 delete(2)",
-    "15 kill(1)",
-    "16 kill(2)"
-];
 
-console.log("\n🔄 Iniciando simulación con SC...");
-operations.forEach(op => mmu.executeOperation(op));
-mmu.printFinalStats(); // 🎯 Mostrar métricas finales
-console.log("\n✅ Simulación completada.");
-*/

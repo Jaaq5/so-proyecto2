@@ -3,10 +3,12 @@ class MMU_RND {
         console.log(`🔧 Inicializando MMU con ${ramSize} páginas en memoria.`);
         this.ramSize = ramSize;
         this.ram = new Map();
-        this.clock = 0;        // Tiempo total de simulación
-        this.thrashing = 0;    // Tiempo perdido en fallos de páginas
-        this.fragmentacion = 0; // Bytes desperdiciados por fragmentación interna
+        this.clock = 0;        
+        this.thrashing = 0;   
+        this.fragmentacion = 0; 
         this.processTable = new Map();
+
+        //MIRA VARA PARA FIFO Y LOS DEMAS
 
         //ESTO ES NUEVO PARA MULTIPAGINA
 
@@ -25,7 +27,8 @@ class MMU_RND {
     executeOperation(operation) {
 
 
-        console.log(`\n📝 Ejecutando operación: ${operation}`);
+
+        console.log(`\nEjecutando operación: ${operation}`);
 
         //SE ELIMINA ESE NUMERO QUE VENIA AL PRINCIPIO
         const command = operation.trim();
@@ -36,32 +39,37 @@ class MMU_RND {
         .map(Number);
 
 
-    if (type === "new") {
-
-      const [pid, size] = params;
-
-      // Asignamos pagina
-      const ptr = this.allocatePage(pid, size);
+        if (type === "new") {
 
 
-    } else if (type === "use") {
-      //  formateamos con P como los demas
-      const [ptrIndex] = params;
-      const ptr = `P${ptrIndex}`;
-      this.usePage(ptr);
 
-    } else if (type === "delete") {
-      const [ptrIndex] = params;
-      const ptr = `P${ptrIndex}`;
-      this.deletePage(ptr);
+            const [pid, size] = params;
 
-    } else if (type === "kill") {
-      const [pid] = params;
-      this.killProcess(pid);
+            // Asignamos pagina
+            const ptr = this.allocatePage(pid, size);
+
+
+        } else if (type === "use") {
+
+        //  formateamos con P como los demas
+            const [ptrIndex] = params;
+            const ptr = `P${ptrIndex}`;
+            this.usePage(ptr);
+
+        } else if (type === "delete") {
+
+            const [ptrIndex] = params;
+            const ptr = `P${ptrIndex}`;
+            this.deletePage(ptr);
+
+        } else if (type === "kill") {
+
+            const [pid] = params;
+            this.killProcess(pid);
+        }
+
+        this.printStatus();
     }
-
-    this.printStatus();
-  }
 
   //ANTES ERA SOLO PTR Y UNA PAGINA 
   //ESTO ES LO NUEVO
@@ -73,12 +81,10 @@ class MMU_RND {
         const pagesNeeded = Math.ceil(size / 4096);
         const ptr = `P${this.ptrCounter++}`;
 
-        // Aseguramos el registro en processTable y ptrToPages
         if (!this.processTable.has(pid)) this.processTable.set(pid, []);
         this.processTable.get(pid).push(ptr);
         this.ptrToPages.set(ptr, []);
 
-        // Fragmentacion
         const wasted = pagesNeeded*4096 - size;
 
 
@@ -137,10 +143,10 @@ class MMU_RND {
 
         pages.forEach(pageId => {
             if (this.ram.has(pageId)) {
-            console.log(` HIT: subpágina ${pageId}`);
+            console.log(` HIT: subpagina ${pageId}`);
             this.clock += 1;
             } else {
-            console.log(` FAULT: subpágina ${pageId}`);
+            console.log(` FAULT: subpagina ${pageId}`);
             this.clock += 5;
             this.thrashing += 5;
 
@@ -213,18 +219,18 @@ class MMU_RND {
 
     printStatus() {
 
-        console.log("\n🔍 Estado actual de la memoria:");
+        console.log("\nEstado actual de la memoria:");
         console.table([...this.ram]);
-        console.log(`🛠️ Fragmentación interna total: ${this.fragmentacion} bytes.`);
+        console.log(`Fragmentación interna total: ${this.fragmentacion} bytes.`);
         console.log("--------------------------------------------------");
     }
 
     printFinalStats() {
-        console.log("\n📊 Resumen de Simulación:");
-        console.log(`⏳ Tiempo total de simulación: ${this.clock}s`);
-        console.log(`🔥 Tiempo en fallos de página (thrashing): ${this.thrashing}s`);
-        console.log(`🛠️ Fragmentación interna total: ${this.fragmentacion} bytes`);
+        console.log("\nResumen de Simulación:");
+        console.log(`Tiempo total de simulación: ${this.clock}s`);
+        console.log(`Tiempo en fallos de página (thrashing): ${this.thrashing}s`);
+        console.log(` Fragmentación interna total: ${this.fragmentacion} bytes`);
         const pct = ((this.thrashing / this.clock) * 100).toFixed(2);
-        console.log(`⚠️ Porcentaje de thrashing: ${pct}%`);
+        console.log(` Porcentaje de thrashing: ${pct}%`);
     }
 }
