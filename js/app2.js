@@ -172,7 +172,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
 });
 
-
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 function ejecutarSimulacion() {
   // contenidoGenerado esta en pruebaRandom.js
@@ -181,106 +180,105 @@ function ejecutarSimulacion() {
   const algorithmSelect = document.getElementById('algorithm').value;
 
   /*
-  // Verificar que OPT existe
-  if (typeof OPT === 'undefined') {
-    console.error('Error: Clase OPT no está definida');
-    return;
-  }
-  */
+   *  // Verificar que OPT existe
+   *  if (typeof OPT === 'undefined') {
+   *    console.error('Error: Clase OPT no está definida');
+   *    return;
+}
+*/
 
   const ventanaRam = window.open("", "_blank", "width=700,height=800");
 
   ventanaRam.document.write(`
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <title>Comparación de RAM - ${algorithmSelect}</title>
-            <style>
-                .status-container { display: flex; justify-content: space-between; margin-top: 15px; }
-                table { width: 48%; border-collapse: collapse; text-align: center; }
-                th, td { border: 1px solid #bbb; padding: 8px; }
-                th { background-color: #ddd; }
-            </style>
-        </head>
-        <body>
-            <h2>Comparación de RAM - ${algorithmSelect}</h2>
-            <h3>Estado de la Simulación</h3>
-            <div class="status-container">
-                <table>
-                    <thead>
-                        <tr><th>OPT (Óptimo)</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td><strong>Procesos Activos:</strong> <span id="processOpt">0</span></td></tr>
-                        <tr><td><strong>Sim-Time:</strong> <span id="simTimeOpt">0s</span></td></tr>
-                        <tr><td><strong>Uso de RAM:</strong> <span id="ramOptUsage">0%</span></td></tr>
-                        <tr><td><strong>Fallos de Página:</strong> <span id="pageFaultsOpt">0</span></td></tr>
-                        <tr><td><strong>Fragmentación:</strong> <span id="fragmentOpt">0B</span></td></tr>
-                        <tr><td><strong>Thrashing:</strong> <span id="thrashingOpt">0%</span></td></tr>
-                    </tbody>
-                </table>
+  <!DOCTYPE html>
+  <html lang="es">
+  <head>
+  <meta charset="UTF-8">
+  <title>Comparación de RAM - ${algorithmSelect}</title>
+  <style>
+  .status-container { display: flex; justify-content: space-between; margin-top: 15px; }
+  table { width: 48%; border-collapse: collapse; text-align: center; }
+  th, td { border: 1px solid #bbb; padding: 8px; }
+  th { background-color: #ddd; }
+  </style>
+  </head>
+  <body>
+  <h2>Comparación de RAM - ${algorithmSelect}</h2>
+  <h3>Estado de la Simulación</h3>
+  <div class="status-container">
+  <table>
+  <thead><tr><th>OPT (Óptimo)</th></tr></thead>
+  <tbody>
+  <tr><td><strong>Procesos Activos:</strong> <span id="processOpt">0</span></td></tr>
+  <tr><td><strong>Sim-Time:</strong> <span id="simTimeOpt">0s</span></td></tr>
+  <tr><td><strong>Uso de RAM:</strong> <span id="ramOptUsage">0%</span></td></tr>
+  <tr><td><strong>Fallos de Página:</strong> <span id="pageFaultsOpt">0</span></td></tr>
+  <tr><td><strong>Fragmentación:</strong> <span id="fragmentOpt">0B</span></td></tr>
+  <tr><td><strong>Thrashing (%):</strong> <span id="thrashingOpt">0%</span></td></tr>
+  <tr><td><strong>Tiempo Total en Thrashing:</strong> <span id="thrashingTimeOpt">0s</span></td></tr>
+  </tbody>
+  </table>
 
-                <table>
-                    <thead>
-                        <tr><th>${algorithmSelect}</th></tr>
-                    </thead>
-                    <tbody>
-                        <tr><td><strong>Procesos Activos:</strong> <span id="processSelected">0</span></td></tr>
-                        <tr><td><strong>Sim-Time:</strong> <span id="simTimeSelected">0s</span></td></tr>
-                        <tr><td><strong>Uso de RAM:</strong> <span id="ramSelectedUsage">0%</span></td></tr>
-                        <tr><td><strong>Fallos de Página:</strong> <span id="pageFaultsSelected">0</span></td></tr>
-                        <tr><td><strong>Fragmentación:</strong> <span id="fragmentSelected">0B</span></td></tr>
-                        <tr><td><strong>Thrashing:</strong> <span id="thrashingSelected">0%</span></td></tr>
-                    </tbody>
-                </table>
+  <table>
+  <thead><tr><th>${algorithmSelect}</th></tr></thead>
+  <tbody>
+  <tr><td><strong>Procesos Activos:</strong> <span id="processSelected">0</span></td></tr>
+  <tr><td><strong>Sim-Time:</strong> <span id="simTimeSelected">0s</span></td></tr>
+  <tr><td><strong>Uso de RAM:</strong> <span id="ramSelectedUsage">0%</span></td></tr>
+  <tr><td><strong>Fallos de Página:</strong> <span id="pageFaultsSelected">0</span></td></tr>
+  <tr><td><strong>Fragmentación:</strong> <span id="fragmentSelected">0B</span></td></tr>
+  <tr><td><strong>Thrashing (%):</strong> <span id="thrashingSelected">0%</span></td></tr>
+  <tr><td><strong>Tiempo Total en Thrashing:</strong> <span id="thrashingTimeSelected">0s</span></td></tr>
+  </tbody>
+  </table>
+  </div>
 
-            </div>
+  <div class="status-container">
+  <!-- TABLA DE ESTADO DE MEMORIA -->
+  <h3>Estado final de la Memoria</h3>
+  <table id="tablaMemoria" border="1">
+  <thead>
+  <tr>
+  <th>Página</th>
+  <th>Proceso</th>
+  <th>Estado</th>
+  </tr>
+  </thead>
+  <tbody>
 
-            <div class="status-container">
-            <!-- TABLA DE ESTADO DE MEMORIA -->
-            <h3>Estado final de la Memoria</h3>
-            <table id="tablaMemoria" border="1">
-              <thead>
-              <tr>
-                <th>Página</th>
-                <th>Proceso</th>
-                <th>Estado</th>
-              </tr>
-              </thead>
-              <tbody>
-              <!-- Aquí se insertarán dinámicamente las filas -->
-              </tbody>
-            </table>
-            </div>
+  </tbody>
+  </table>
+  </div>
 
-            <script>
-                function updateStats(optProcesses, selectedProcesses, optTime, selectedTime, optFaults, selectedFaults, optFragment, selectedFragment, optThrashing, selectedThrashing, optRamUsage, selectedRamUsage) {
-                    document.getElementById("processOpt").textContent = optProcesses;
-                    document.getElementById("processSelected").textContent = selectedProcesses;
-                    document.getElementById("simTimeOpt").textContent = optTime + "s";
-                    document.getElementById("simTimeSelected").textContent = selectedTime + "s";
-                    document.getElementById("ramOptUsage").textContent = optRamUsage + "%";
-                    document.getElementById("ramSelectedUsage").textContent = selectedRamUsage + "%";
-                    document.getElementById("pageFaultsOpt").textContent = optFaults;
-                    document.getElementById("pageFaultsSelected").textContent = selectedFaults;
-                    document.getElementById("fragmentOpt").textContent = optFragment + "B";
-                    document.getElementById("fragmentSelected").textContent = selectedFragment + "B";
-                    document.getElementById("thrashingOpt").textContent = optThrashing + "%";
-                    document.getElementById("thrashingSelected").textContent = selectedThrashing + "%";
-                }
+  <script>
+  function updateStats(optProcesses, selectedProcesses, optTime, selectedTime, optFaults, selectedFaults, optFragment, selectedFragment, optThrashing, selectedThrashing, optRamUsage, selectedRamUsage, optThrashingTime, selectedThrashingTime) {
+    document.getElementById("processOpt").textContent = optProcesses;
+    document.getElementById("processSelected").textContent = selectedProcesses;
+    document.getElementById("simTimeOpt").textContent = optTime + "s";
+    document.getElementById("simTimeSelected").textContent = selectedTime + "s";
+    document.getElementById("ramOptUsage").textContent = optRamUsage + "%";
+    document.getElementById("ramSelectedUsage").textContent = selectedRamUsage + "%";
+    document.getElementById("pageFaultsOpt").textContent = optFaults;
+    document.getElementById("pageFaultsSelected").textContent = selectedFaults;
+    document.getElementById("fragmentOpt").textContent = optFragment + "B";
+    document.getElementById("fragmentSelected").textContent = selectedFragment + "B";
+    document.getElementById("thrashingOpt").textContent = optThrashing + "%";
+    document.getElementById("thrashingSelected").textContent = selectedThrashing + "%";
+    document.getElementById("thrashingTimeOpt").textContent = optThrashingTime + "s";
+    document.getElementById("thrashingTimeSelected").textContent = selectedThrashingTime + "s";
+  }
 
-                window.addEventListener("message", (event) => {
-                    const { optProcesses, selectedProcesses, optTime, selectedTime, optFaults, selectedFaults, optFragment, selectedFragment, optThrashing, selectedThrashing, optRamUsage, selectedRamUsage } = event.data;
-                    updateStats(optProcesses, selectedProcesses, optTime, selectedTime, optFaults, selectedFaults, optFragment, selectedFragment, optThrashing, selectedThrashing, optRamUsage, selectedRamUsage);
-                });
-            </script>
-        </body>
-        </html>
-    `);
+  window.addEventListener("message", (event) => {
+    const { optProcesses, selectedProcesses, optTime, selectedTime, optFaults, selectedFaults, optFragment, selectedFragment, optThrashing, selectedThrashing, optRamUsage, selectedRamUsage, optThrashingTime, selectedThrashingTime } = event.data;
+    updateStats(optProcesses, selectedProcesses, optTime, selectedTime, optFaults, selectedFaults, optFragment, selectedFragment, optThrashing, selectedThrashing, optRamUsage, selectedRamUsage, optThrashingTime, selectedThrashingTime);
+  });
+  </script>
+  </body>
+  </html>
+  `);
 
-  const mmuOPT = new OPT(100, []);
-  const mmuSelected = new (window[algorithmSelect])(100);
+  const mmuOPT = new OPT(10, []);
+  const mmuSelected = new (window[algorithmSelect])(10);
 
   let index = 0;
   function ejecutarPaso() {
@@ -298,10 +296,12 @@ function ejecutarSimulacion() {
         selectedFaults: mmuSelected.thrashing / 5,
         optFragment: mmuOPT.fragmentacion,
         selectedFragment: mmuSelected.fragmentacion,
-        optThrashing: ((mmuOPT.thrashing / mmuOPT.clock) * 100).toFixed(2),
-                             selectedThrashing: ((mmuSelected.thrashing / mmuSelected.clock) * 100).toFixed(2),
-                             optRamUsage: ((mmuOPT.queue?.length || 0) / (mmuOPT.ramSize || 1) * 100).toFixed(2),
-                             selectedRamUsage: ((mmuSelected.queue?.length || 0) / (mmuSelected.ramSize || 1) * 100).toFixed(2)
+        optThrashing: ((mmuOPT.thrashing / (mmuOPT.clock || 1)) * 100).toFixed(2),
+                             selectedThrashing: ((mmuSelected.thrashing / (mmuSelected.clock || 1)) * 100).toFixed(2),
+                             optRamUsage: ((mmuOPT.ram.size / mmuOPT.ramSize) * 100).toFixed(2),
+                             selectedRamUsage: ((mmuSelected.ram.size / mmuSelected.ramSize) * 100).toFixed(2),
+                             optThrashingTime: mmuOPT.thrashing,
+                             selectedThrashingTime: mmuSelected.thrashing
       }, "*");
 
       setTimeout(ejecutarPaso, 5);
@@ -312,6 +312,7 @@ function ejecutarSimulacion() {
   }
 
   ejecutarPaso();
+
 }
 
 /**

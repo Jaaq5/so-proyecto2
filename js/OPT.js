@@ -193,7 +193,10 @@ class MMU_OPT {
 
 
     const wasted = this.ptrToWasted.get(ptr) || 0;
-    this.fragmentacion -= wasted;
+    //this.fragmentacion -= wasted;
+    if (this.ptrToWasted.has(ptr)) {
+      console.log(`Fragmentación antes de eliminar ${ptr}: ${this.fragmentacion}`);
+    }
     this.ptrToWasted.delete(ptr);
 
 
