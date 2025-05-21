@@ -13,6 +13,12 @@ class MMU_RND {
         this.ptrCounter   = 1;
         this.ptrToPages   = new Map();
 
+
+        //hice un mapa para guarda la frafmentacion de cada ptr
+
+        this.ptrToWasted = new Map();
+
+
     
     }
 
@@ -74,8 +80,13 @@ class MMU_RND {
 
         // Fragmentacion
         const wasted = pagesNeeded*4096 - size;
+
+
         this.fragmentacion += wasted;
-        console.log(`🛠️ Fragmentación interna ptr=${ptr}: ${wasted} bytes.`);
+        console.log(` Fragmentación interna ptr=${ptr}: ${wasted} bytes.`);
+
+        // Guardar el wasted asociado al ptr
+        this.ptrToWasted.set(ptr, wasted);
 
         // Crear cada subpagina
         for (let i = 0; i < pagesNeeded; i++) {
@@ -83,14 +94,14 @@ class MMU_RND {
 
             const pageId = `${ptr}_pg${i}`;
 
-            // Si RAM llena → expulsión aleatoria
+            // Si RAM llena  , hay expulsion aleatoria
             if (this.ram.size >= this.ramSize) {
                 const keys = Array.from(this.ram.keys());
                 const ev = keys[Math.floor(Math.random()*keys.length)];
                 this.ram.delete(ev);
                 this.clock += 5;
                 this.thrashing += 5;
-                console.log(`🎲 RND: expulsada página ${ev}`);
+                console.log(` RND: expulsada página ${ev}`);
             } else {
 
                 this.clock += 1;
@@ -100,7 +111,7 @@ class MMU_RND {
 
             this.ram.set(pageId, pid);
             this.ptrToPages.get(ptr).push(pageId);
-            console.log(`✅ RND: asignada subpágina ${pageId} a proceso ${pid}`);
+            console.log(` RND: asignada subpágina ${pageId} a proceso ${pid}`);
             }
 
             return ptr;
@@ -126,19 +137,19 @@ class MMU_RND {
 
         pages.forEach(pageId => {
             if (this.ram.has(pageId)) {
-            console.log(`🔵 HIT: subpágina ${pageId}`);
+            console.log(` HIT: subpágina ${pageId}`);
             this.clock += 1;
             } else {
-            console.log(`🔴 FAULT: subpágina ${pageId}`);
+            console.log(` FAULT: subpágina ${pageId}`);
             this.clock += 5;
             this.thrashing += 5;
 
-            // expulsión aleatoria si está llena
+            // expulsion aleatoria si se encuentra full 
             if (this.ram.size >= this.ramSize) {
                 const keys = Array.from(this.ram.keys());
                 const ev = keys[Math.floor(Math.random()*keys.length)];
                 this.ram.delete(ev);
-                console.log(`🎲 RND (use): expulsada ${ev}`);
+                console.log(` RND (use): expulsada ${ev}`);
             }
             // recarga
             this.ram.set(pageId, pid);
@@ -152,8 +163,12 @@ class MMU_RND {
 
     deletePage(ptr) {
 
+        // Antes de eliminar paginas , restar la fragmentacion de este ptr
+        const wasted = this.ptrToWasted.get(ptr) || 0;
+        this.fragmentacion -= wasted;
+        this.ptrToWasted.delete(ptr)
 
-        // 1. elimina todas las subpáginas de RAM
+        // Se elimina todas las subpagines de RAM
         const pages = this.ptrToPages.get(ptr) || [];
         pages.forEach(pageId => {
             if (this.ram.delete(pageId)) {
@@ -161,11 +176,11 @@ class MMU_RND {
             }
         });
 
-        // 2. quita este ptr de ptrToPages
+        // se quita este ptr de EL ptrToPages
         this.ptrToPages.delete(ptr);
 
 
-        // 3. encuentra al proceso dueño de este ptr y lo elimina de su lista
+        // Se encuentra al proceso dueño de este ptr y lo eliminaa de su listaa
         const owner = [...this.processTable.entries()]
             .find(([pid, ptrs]) => ptrs.includes(ptr));
         if (owner) {
@@ -173,18 +188,24 @@ class MMU_RND {
             const [pid, ptrs] = owner;
             const i = ptrs.indexOf(ptr);
             ptrs.splice(i, 1);
-            // si quieres, puedes borrar el pid si ya no tiene más ptrs
-            // if (ptrs.length === 0) this.processTable.delete(pid);
         }
     }
 
 
     killProcess(pid) {
 
+
+    // Se clona la lista de ptrs
         const ptrs = this.processTable.get(pid) || [];
-        ptrs.forEach(ptr => this.deletePage(ptr));
+        const clone = [...ptrs];
+
+    // Se Borra cada ptr sin miedo a mutar el original
+        clone.forEach(ptr => this.deletePage(ptr));
+
+    // Al final se elimina la entrada del proceso
         this.processTable.delete(pid);
     }
+
 
 
 
