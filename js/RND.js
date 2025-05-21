@@ -8,6 +8,11 @@ class MMU_RND {
         this.fragmentacion = 0; // Bytes desperdiciados por fragmentación interna
         this.processTable = new Map();
 
+        //ESTO ES NUEVO PARA MULTIPAGINA
+
+        this.ptrCounter   = 1;
+        this.ptrToPages   = new Map();
+
     
     }
 
@@ -32,8 +37,6 @@ class MMU_RND {
       // Asignamos pagina
       const ptr = this.allocatePage(pid, size);
 
-      if (!this.processTable.has(pid)) this.processTable.set(pid, []);
-      this.processTable.get(pid).push(ptr);
 
     } else if (type === "use") {
       //  formateamos con P como los demas
@@ -54,54 +57,141 @@ class MMU_RND {
     this.printStatus();
   }
 
+  //ANTES ERA SOLO PTR Y UNA PAGINA 
+  //ESTO ES LO NUEVO
+
+
+
     allocatePage(pid, size) {
-        let ptr = `P${this.ram.size + 1}`; // Generamos un puntero para la nueva página
-        let desperdicio = (Math.ceil(size / 4096) * 4096) - size; // Calcular fragmentación interna
-        this.fragmentacion += desperdicio;
-        console.log(`🛠️ Fragmentación interna en ${ptr}: ${desperdicio} bytes.`);
 
-        if (this.ram.size >= this.ramSize) {
-            let keys = Array.from(this.ram.keys());
-            let evictedPtr = keys[Math.floor(Math.random() * keys.length)]; // Selección aleatoria
-            this.ram.delete(evictedPtr);
-            console.log(`🎲 RND: Página ${evictedPtr} reemplazada al azar.`);
-        }
+        const pagesNeeded = Math.ceil(size / 4096);
+        const ptr = `P${this.ptrCounter++}`;
 
-        this.ram.set(ptr, pid);
-        console.log(`✅ RND: Página ${ptr} asignada a proceso ${pid}.`);
-        return ptr;
+        // Aseguramos el registro en processTable y ptrToPages
+        if (!this.processTable.has(pid)) this.processTable.set(pid, []);
+        this.processTable.get(pid).push(ptr);
+        this.ptrToPages.set(ptr, []);
+
+        // Fragmentacion
+        const wasted = pagesNeeded*4096 - size;
+        this.fragmentacion += wasted;
+        console.log(`🛠️ Fragmentación interna ptr=${ptr}: ${wasted} bytes.`);
+
+        // Crear cada subpagina
+        for (let i = 0; i < pagesNeeded; i++) {
+
+
+            const pageId = `${ptr}_pg${i}`;
+
+            // Si RAM llena → expulsión aleatoria
+            if (this.ram.size >= this.ramSize) {
+                const keys = Array.from(this.ram.keys());
+                const ev = keys[Math.floor(Math.random()*keys.length)];
+                this.ram.delete(ev);
+                this.clock += 5;
+                this.thrashing += 5;
+                console.log(`🎲 RND: expulsada página ${ev}`);
+            } else {
+
+                this.clock += 1;
+            }
+
+            // Asignar la subpagina
+
+            this.ram.set(pageId, pid);
+            this.ptrToPages.get(ptr).push(pageId);
+            console.log(`✅ RND: asignada subpágina ${pageId} a proceso ${pid}`);
+            }
+
+            return ptr;
     }
+
+    //ANTE SOLO SE MIRA UN PTR
+
 
     usePage(ptr) {
-        if (this.ram.has(ptr)) {
-            console.log(`🔵 HIT: Página ${ptr} está en RAM.`);
+
+
+        const pages = this.ptrToPages.get(ptr) || [];
+
+        if (!pages.length) {
+
+            console.warn(`RND: ptr=${ptr} no existe o ya fue borrado.`);
+            return;
+        }
+
+        // Determinar PID para recarga en fallo
+        const pid = [...this.processTable.entries()]
+                        .find(([, arr]) => arr.includes(ptr))?.[0];
+
+        pages.forEach(pageId => {
+            if (this.ram.has(pageId)) {
+            console.log(`🔵 HIT: subpágina ${pageId}`);
             this.clock += 1;
-        } else {
-            console.log(`🔴 FAULT: Página ${ptr} no está en RAM.`);
+            } else {
+            console.log(`🔴 FAULT: subpágina ${pageId}`);
             this.clock += 5;
             this.thrashing += 5;
-        }
 
-        console.log(`⏳ Tiempo total: ${this.clock}s`);
-        console.log(`🔥 Thrashing acumulado: ${this.thrashing}s`);
+            // expulsión aleatoria si está llena
+            if (this.ram.size >= this.ramSize) {
+                const keys = Array.from(this.ram.keys());
+                const ev = keys[Math.floor(Math.random()*keys.length)];
+                this.ram.delete(ev);
+                console.log(`🎲 RND (use): expulsada ${ev}`);
+            }
+            // recarga
+            this.ram.set(pageId, pid);
+            console.log(`   → recargada ${pageId} para proceso ${pid}`);
+            }
+        });
+
+        console.log(`⏳ Tiempo: ${this.clock}s  🔥 Thrashing: ${this.thrashing}s`);
     }
+
 
     deletePage(ptr) {
-        if (this.ram.has(ptr)) {
-            this.ram.delete(ptr);
-            console.log(`🗑️ RND: Página ${ptr} eliminada.`);
-        } else {
-            console.log(`⚠️ RND: Página ${ptr} no encontrada.`);
+
+
+        // 1. elimina todas las subpáginas de RAM
+        const pages = this.ptrToPages.get(ptr) || [];
+        pages.forEach(pageId => {
+            if (this.ram.delete(pageId)) {
+            console.log(`🗑️ RND: subpágina ${pageId} eliminada.`);
+            }
+        });
+
+        // 2. quita este ptr de ptrToPages
+        this.ptrToPages.delete(ptr);
+
+
+        // 3. encuentra al proceso dueño de este ptr y lo elimina de su lista
+        const owner = [...this.processTable.entries()]
+            .find(([pid, ptrs]) => ptrs.includes(ptr));
+        if (owner) {
+
+            const [pid, ptrs] = owner;
+            const i = ptrs.indexOf(ptr);
+            ptrs.splice(i, 1);
+            // si quieres, puedes borrar el pid si ya no tiene más ptrs
+            // if (ptrs.length === 0) this.processTable.delete(pid);
         }
     }
 
+
     killProcess(pid) {
-        console.log(`☠️ Eliminando proceso ${pid} y sus páginas.`);
-        let pagesToRemove = [...this.ram.entries()].filter(([ptr, p]) => p === pid);
-        pagesToRemove.forEach(([ptr]) => this.deletePage(ptr));
+
+        const ptrs = this.processTable.get(pid) || [];
+        ptrs.forEach(ptr => this.deletePage(ptr));
+        this.processTable.delete(pid);
     }
 
+
+
+
+
     printStatus() {
+
         console.log("\n🔍 Estado actual de la memoria:");
         console.table([...this.ram]);
         console.log(`🛠️ Fragmentación interna total: ${this.fragmentacion} bytes.`);
@@ -117,31 +207,3 @@ class MMU_RND {
         console.log(`⚠️ Porcentaje de thrashing: ${pct}%`);
     }
 }
-
-/*
-// 📜 Simulación con RND
-const mmu = new MMU_RND(3);
-const operations = [
-    "1 new(1,500)",
-    "2 use(1)",
-    "3 new(1,1000)",
-    "4 use(1)",
-    "5 use(2)",
-    "6 new(2,500)",
-    "7 use(3)",
-    "8 use(1)",
-    "9 new(2,50)",
-    "10 use(4)",
-    "11 delete(1)",
-    "12 use(2)",
-    "13 use(3)",
-    "14 delete(2)",
-    "15 kill(1)",
-    "16 kill(2)"
-];
-
-console.log("\n🔄 Iniciando simulación con RND...");
-operations.forEach(op => mmu.executeOperation(op));
-mmu.printFinalStats(); // 🎯 Mostrar métricas finales
-console.log("\n✅ Simulación completada.");
-*/
