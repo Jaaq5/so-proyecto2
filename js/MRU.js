@@ -3,10 +3,10 @@ class MMU_MRU {
         console.log(`🔧 Inicializando MMU con ${ramSize} páginas en memoria.`);
         this.ramSize = ramSize;
         this.ram = new Map();
-        this.accessOrder = [];
-        this.clock = 0;        // Tiempo total de simulación
-        this.thrashing = 0;    // Tiempo perdido en fallos de páginas
-        this.fragmentacion = 0; // Bytes desperdiciados por fragmentación interna
+        this.accessOrder = []; //IGUAL QUE FIFO TODAS ESTAS VARIABLESSS
+        this.clock = 0;        // Tiempo total de simulacion
+        this.thrashing = 0;    // Tiempo perdido en fallos de paginas
+        this.fragmentacion = 0; // Bytes desperdiciados por frag interna
     
         //Necesitamos la misma tabla de procesos que en FIFO
         this.processTable = new Map();
@@ -27,13 +27,13 @@ class MMU_MRU {
       // Mostramos la operación que llega
       console.log(`\n📝 Ejecutando operación: ${operation}`);
 
-      // 1. Limpiamos espacios y tomamos la instrucción completa
+      // 1 Pirmero limpiamos espacios y tomamos la instruccion completa
       const command = operation.trim();
 
-      // 2. Separamos el tipo ('new','use',etc.) de los parámetros crudos
+      // 2 Separamos el tipo de los Parametros crudos
       const [type, rawParams] = command.split("(");
 
-      // 3. Convertimos rawParams a array de números
+      // 3 Convertimos rawParams a array de numeros
       const params = rawParams
         .replace(")", "")
         .split(",")
@@ -48,14 +48,14 @@ class MMU_MRU {
           this.processTable.set(pid, []);
         }
 
-        // Asignamos la página y almacenamos el puntero
+        // Asignamos la page y almacenamos el puntero
         const ptr = this.allocatePage(pid, size);
         this.processTable.get(pid).push(ptr);
 
       } else if (type === "use") {
         // Para usar, desestructuramos ptr de params
         const [ptrIndex] = params;
-        // En MRU los punteros van con 'P' delante
+        // En MRU los punteros van con 'P' delante3
         const ptr = `P${ptrIndex}`;
         this.usePage(ptr);
 
@@ -90,25 +90,24 @@ class MMU_MRU {
       // Inicializar lista de páginas
     this.ptrToPages.set(ptr, []);
 
-      // Fragmentación interna
+      // frag interna
     const wasted = pagesNeeded * 4096 - size;
     this.fragmentacion += wasted;
 
     this.ptrToWasted.set(ptr, wasted);
 
-    console.log(`🛠️ Fragmentación interna ptr=${ptr}: ${wasted} bytes.`);
+    console.log(`Fragmentación interna ptr=${ptr}: ${wasted} bytes.`);
 
     for (let i = 0; i < pagesNeeded; i++) {
       const pageId = `${ptr}_pg${i}`;
 
-      // Evicción MRU si RAM llena
       if (this.accessOrder.length >= this.ramSize) {
 
         const evicted = this.accessOrder.pop();
         this.ram.delete(evicted);
         this.clock += 5;
         this.thrashing += 5;
-        console.log(`🚨 MRU: expulsada página ${evicted}`);
+        console.log(`MRU: expulsada página ${evicted}`);
 
 
       } else {
@@ -123,7 +122,7 @@ class MMU_MRU {
       
 
 
-      console.log(`✅ MRU: asignada página ${pageId} a proceso ${pid}`);
+      console.log(`MRU: asignada pagina ${pageId} a proceso ${pid}`);
       }
 
     return ptr;
@@ -134,6 +133,7 @@ class MMU_MRU {
 
   usePage(ptr) {
 
+
     
     const pages = this.ptrToPages.get(ptr) || [];
     if (!pages.length) {
@@ -141,50 +141,42 @@ class MMU_MRU {
       return;
     }
 
-    // Obtener pid para recarga
+    const pid = [...this.processTable.keys()]
 
-    //const pid = this.processTable.get(
-    //  [...this.processTable].find(([p, arr]) => arr.includes(ptr))[0]
-    //);
-
-  const pid = [...this.processTable.keys()]
-
-  .find(p => this.processTable.get(p).includes(ptr));
+    .find(p => this.processTable.get(p).includes(ptr));
 
 
-  if (pid === undefined) {
+    if (pid === undefined) {
 
-    console.warn(`MRU: ptr=${ptr} sin proceso asociado.`);
-    return;
-  }
+      console.warn(`MRU: ptr=${ptr} sin proceso asociado.`);
+      return;
+    }
+      pages.forEach(pageId => {
+        if (this.ram.has(pageId)) {
+          console.log(` MRU HIT: ${pageId}`);
+          this.clock += 1;
 
-
-    pages.forEach(pageId => {
-      if (this.ram.has(pageId)) {
-        console.log(` MRU HIT: ${pageId}`);
-        this.clock += 1;
-
-        // Mover al final (mas reciente)
-        this.accessOrder = this.accessOrder.filter(p => p !== pageId);
-        this.accessOrder.push(pageId);
-      } else {
-        console.log(` MRU FAULT: ${pageId}`);
-        this.clock += 5;
-        this.thrashing += 5;
-        // Expulsar MRU si hace falta
-        if (this.accessOrder.length >= this.ramSize) {
-          const evicted = this.accessOrder.pop();
-          this.ram.delete(evicted);
-          console.log(` MRU (use): expulsada ${evicted}`);
+          // Mover al final (mas reciente)
+          this.accessOrder = this.accessOrder.filter(p => p !== pageId);
+          this.accessOrder.push(pageId);
+        } else {
+          console.log(` MRU FAULT: ${pageId}`);
+          this.clock += 5;
+          this.thrashing += 5;
+          // Expulsar MRU si hace falta
+          if (this.accessOrder.length >= this.ramSize) {
+            const evicted = this.accessOrder.pop();
+            this.ram.delete(evicted);
+            console.log(`MRU (use): expulsada ${evicted}`);
+          }
+          // Recargar
+          this.ram.set(pageId, pid);
+          this.accessOrder.push(pageId);
+          console.log(`recargada ${pageId} para proceso ${pid}`);
         }
-        // Recargar
-        this.ram.set(pageId, pid);
-        this.accessOrder.push(pageId);
-        console.log(`   → recargada ${pageId} para proceso ${pid}`);
-      }
-    });
+      });
 
-    console.log(`Tiempo: ${this.clock}s  Thrashing: ${this.thrashing}s`);
+      console.log(`Tiempo: ${this.clock}s  Thrashing: ${this.thrashing}s`);
   }
 
 
@@ -216,23 +208,23 @@ class MMU_MRU {
     const ptrs = this.processTable.get(pid) || [];
     ptrs.forEach(ptr => this.deletePage(ptr));
     this.processTable.delete(pid);
-    console.log(`☠️ MRU: proceso ${pid} eliminado`);
+    console.log(`MRU: proceso ${pid} eliminado`);
   }
 
 
     printStatus() {
-        console.log("\n🔍 Estado actual de la memoria:");
+        console.log("\nEstado actual de la memoria:");
         console.table([...this.ram]);
-        console.log(`🛠️ Fragmentación interna total: ${this.fragmentacion} bytes.`);
+        console.log(`Fragmentacion interna total: ${this.fragmentacion} bytes.`);
         console.log("--------------------------------------------------");
     }
 
     printFinalStats() {
-        console.log("\n📊 Resumen de Simulación:");
-        console.log(`⏳ Tiempo total de simulación: ${this.clock}s`);
-        console.log(`🔥 Tiempo en fallos de página (thrashing): ${this.thrashing}s`);
-        console.log(`🛠️ Fragmentación interna total: ${this.fragmentacion} bytes`);
+        console.log("\nResumen de Simulacion:");
+        console.log(`Tiempo total de simulacion: ${this.clock}s`);
+        console.log(`Tiempo en fallos de oaguba (thrashing): ${this.thrashing}s`);
+        console.log(`Fragmentación interna total: ${this.fragmentacion} bytes`);
         const pct = ((this.thrashing / this.clock) * 100).toFixed(2);
-        console.log(`⚠️ Porcentaje de thrashing: ${pct}%`);
+        console.log(`Porcentaje de thrashing: ${pct}%`);
     }
 }
