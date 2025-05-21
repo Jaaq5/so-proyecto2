@@ -16,59 +16,64 @@ class MMU_MRU {
         this.ptrToPages    = new Map();
         this.ptrCounter    = 1;
     
+        this.ptrToWasted = new Map(); // Para frag por ptr
+
     }
 
     executeOperation(operation) {
-    // Mostramos la operación que llega
-    console.log(`\n📝 Ejecutando operación: ${operation}`);
 
-    // 1. Limpiamos espacios y tomamos la instrucción completa
-    const command = operation.trim();
 
-    // 2. Separamos el tipo ('new','use',etc.) de los parámetros crudos
-    const [type, rawParams] = command.split("(");
+        
+      // Mostramos la operación que llega
+      console.log(`\n📝 Ejecutando operación: ${operation}`);
 
-    // 3. Convertimos rawParams a array de números
-    const params = rawParams
-      .replace(")", "")
-      .split(",")
-      .map(Number);
+      // 1. Limpiamos espacios y tomamos la instrucción completa
+      const command = operation.trim();
 
-    if (type === "new") {
-      // Desestructuramos pid y size de params
-      const [pid, size] = params;
+      // 2. Separamos el tipo ('new','use',etc.) de los parámetros crudos
+      const [type, rawParams] = command.split("(");
 
-      // Aseguramos que exista la tabla de ese proceso
-      if (!this.processTable.has(pid)) {
-        this.processTable.set(pid, []);
+      // 3. Convertimos rawParams a array de números
+      const params = rawParams
+        .replace(")", "")
+        .split(",")
+        .map(Number);
+
+      if (type === "new") {
+        // Desestructuramos pid y size de params
+        const [pid, size] = params;
+
+        // Aseguramos que exista la tabla de ese proceso
+        if (!this.processTable.has(pid)) {
+          this.processTable.set(pid, []);
+        }
+
+        // Asignamos la página y almacenamos el puntero
+        const ptr = this.allocatePage(pid, size);
+        this.processTable.get(pid).push(ptr);
+
+      } else if (type === "use") {
+        // Para usar, desestructuramos ptr de params
+        const [ptrIndex] = params;
+        // En MRU los punteros van con 'P' delante
+        const ptr = `P${ptrIndex}`;
+        this.usePage(ptr);
+
+      } else if (type === "delete") {
+        // Desestructuramos ptr
+        const [ptrIndex] = params;
+        const ptr = `P${ptrIndex}`;
+        this.deletePage(ptr);
+
+      } else if (type === "kill") {
+        // Desestructuramos pid
+        const [pid] = params;
+        this.killProcess(pid);
       }
 
-      // Asignamos la página y almacenamos el puntero
-      const ptr = this.allocatePage(pid, size);
-      this.processTable.get(pid).push(ptr);
-
-    } else if (type === "use") {
-      // Para usar, desestructuramos ptr de params
-      const [ptrIndex] = params;
-      // En MRU los punteros van con 'P' delante
-      const ptr = `P${ptrIndex}`;
-      this.usePage(ptr);
-
-    } else if (type === "delete") {
-      // Desestructuramos ptr
-      const [ptrIndex] = params;
-      const ptr = `P${ptrIndex}`;
-      this.deletePage(ptr);
-
-    } else if (type === "kill") {
-      // Desestructuramos pid
-      const [pid] = params;
-      this.killProcess(pid);
+      // Imprimimos el estado tras cada operación
+      this.printStatus();
     }
-
-    // Imprimimos el estado tras cada operación
-    this.printStatus();
-  }
 
     
   allocatePage(pid, size) {
@@ -88,6 +93,9 @@ class MMU_MRU {
       // Fragmentación interna
     const wasted = pagesNeeded * 4096 - size;
     this.fragmentacion += wasted;
+
+    this.ptrToWasted.set(ptr, wasted);
+
     console.log(`🛠️ Fragmentación interna ptr=${ptr}: ${wasted} bytes.`);
 
     for (let i = 0; i < pagesNeeded; i++) {
@@ -113,6 +121,8 @@ class MMU_MRU {
       this.accessOrder.push(pageId);
       this.ptrToPages.get(ptr).push(pageId);
       
+
+
       console.log(`✅ MRU: asignada página ${pageId} a proceso ${pid}`);
       }
 
@@ -179,6 +189,11 @@ class MMU_MRU {
 
 
   deletePage(ptr) {
+
+    const wasted = this.ptrToWasted.get(ptr) || 0;
+    this.fragmentacion -= wasted;
+    this.ptrToWasted.delete(ptr);
+
 
     const pages = this.ptrToPages.get(ptr) || [];
     pages.forEach(pageId => {
