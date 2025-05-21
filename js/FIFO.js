@@ -193,14 +193,16 @@ class MMU_FIFO {
     }
 
 
-
     killProcess(pid) {
-
+        
         const ptrs = this.processTable.get(pid) || [];
-        ptrs.forEach(ptr => this.deletePage(ptr));
+        // tomo una copia (slice) para que deletePage no la mutile
+        for (const ptr of ptrs.slice()) {
+            this.deletePage(ptr);
+        }
         this.processTable.delete(pid);
-        console.log(`FIFO: proceso ${pid} y todas sus páginas eliminados.`);
-    }
+        }
+
 
 
 
