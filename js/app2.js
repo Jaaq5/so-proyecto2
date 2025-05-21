@@ -103,7 +103,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const operationCount = document.getElementById('operation-count').value;
 
     if (!seed) {
-      showError('Por favor ingrese un valor para la semilla');
+      showError('Por favor, ingrese un valor para la semilla');
       return;
     }
 
@@ -151,21 +151,22 @@ document.addEventListener('DOMContentLoaded', () => {
       return; // Detener la ejecución si la semilla no es válida
     }
 
+    operacionesDesdeArchivo = null; // Limpiar archivo cargado si se genera nuevo escenario
     // Si la semilla es válida, entonces puedes proceder a generar el escenario
     generarEscenario();
+    alert("Escenario generado, puede descargarlo o iniciar la ejecucion");
   });
 
 
   // Botón de "Iniciar"
   iniciarEjecucionBtn.addEventListener('click', () => {
-    const seed = seedInput.value.trim();
-    if (operacionesDesdeArchivo !== NULL && contenidoGeneradoParaMemoria == NULL) {
-      //alert("Por favor, ingrese una semilla valida (un numero)");
-      return; // Detener la ejecución si la semilla no es válida
+
+    if (!operacionesDesdeArchivo && !contenidoGeneradoParaMemoria) {
+      alert("Por favor, cargue un archivo o genere un escenario antes de iniciar la ejecucion");
+      return; // Detener ejecución si no hay datos
     }
 
-    // Si la semilla es válida, entonces puedes proceder a generar el escenario
-    ejecutarSimulacion();
+    ejecutarSimulacion(); // Ejecutar si hay datos
   });
 
 
@@ -187,7 +188,7 @@ function ejecutarSimulacion() {
   }
   */
 
-  const ventanaRam = window.open("", "_blank", "width=500,height=400");
+  const ventanaRam = window.open("", "_blank", "width=700,height=800");
 
   ventanaRam.document.write(`
         <!DOCTYPE html>
@@ -204,7 +205,6 @@ function ejecutarSimulacion() {
         </head>
         <body>
             <h2>Comparación de RAM - ${algorithmSelect}</h2>
-            <h3>Hola</h3>
             <h3>Estado de la Simulación</h3>
             <div class="status-container">
                 <table>
@@ -234,20 +234,24 @@ function ejecutarSimulacion() {
                         <tr><td><strong>Thrashing:</strong> <span id="thrashingSelected">0%</span></td></tr>
                     </tbody>
                 </table>
-                <!-- TABLA DE ESTADO DE MEMORIA -->
-                <h3>Estado final de la Memoria</h3>
-                <table id="tablaMemoria" border="1">
-                <thead>
-                <tr>
+
+            </div>
+
+            <div class="status-container">
+            <!-- TABLA DE ESTADO DE MEMORIA -->
+            <h3>Estado final de la Memoria</h3>
+            <table id="tablaMemoria" border="1">
+              <thead>
+              <tr>
                 <th>Página</th>
                 <th>Proceso</th>
                 <th>Estado</th>
-                </tr>
-                </thead>
-                <tbody>
-                <!-- Aquí se insertarán dinámicamente las filas -->
-                </tbody>
-                </table>
+              </tr>
+              </thead>
+              <tbody>
+              <!-- Aquí se insertarán dinámicamente las filas -->
+              </tbody>
+            </table>
             </div>
 
             <script>
@@ -320,6 +324,8 @@ function procesarArchivo(contenido) {
   .split("\n")
   .filter(linea => linea.trim().length > 0); // Filtra líneas vacías pero mantiene espacios internos
 
+  contenidoGeneradoParaMemoria = null; // Limpiar escenario generado si se carga archivo
+
   // Mostrar en consola
   console.log("📂 Archivo cargado:", operacionesDesdeArchivo);
 
@@ -330,7 +336,7 @@ function procesarArchivo(contenido) {
 //
 function descargarArchivo() {
   if (!contenidoGeneradoParaArchivo) {
-    alert("Primero genera el escenario antes de descargar.");
+    alert("Primero genere  el escenario para descargarlo.");
     return;
   }
 
@@ -386,7 +392,7 @@ function showResults(seed, algorithm, processCount, operationCount) {
   resultsContainer.scrollIntoView({ behavior: 'smooth' });
 }
 
-
+// No se usa, era una tabla de Joseph pero no se pudo poner
 function renderSummary(summary, containerId) {
 
   const c = document.getElementById(containerId);

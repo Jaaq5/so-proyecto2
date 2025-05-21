@@ -12,6 +12,7 @@ class MMU_FIFO {
 
         this.ptrToPages   = new Map();
         this.ptrToWasted  = new Map();   // para frag por ptr
+        this.historialPaginas = new Set(); // historial total de páginas creadas
 
     }
 
@@ -99,6 +100,7 @@ class MMU_FIFO {
             this.ram.set(pageId, pid);
             this.ptrToPages.get(ptr).push(pageId);
             console.log(`asignada pagina física ${pageId}`);
+            this.historialPaginas.add(pageId);
         }
 
         // frag internaaa
@@ -111,9 +113,12 @@ class MMU_FIFO {
     }
 
 
-
-
-
+    fueEliminada(pageId) {
+        for (const [ptr, pages] of this.ptrToPages.entries()) {
+            if (pages.includes(pageId)) return false; // aún existe
+        }
+        return true; // no está en ninguna lista activa
+    }
 
 
     usePage(ptr) {
@@ -206,6 +211,57 @@ class MMU_FIFO {
         console.table([...this.ram]); // Muestra el Map en formato tabla
         console.log(` Fragmentación interna total: ${this.fragmentacion} bytes.`);
         console.log("--------------------------------------------------");
+
+
+        const tabla = document.getElementById("tablaMemoria").querySelector("tbody");
+        tabla.innerHTML = ""; // limpia contenido anterior
+
+        const todasLasPaginas = new Set();
+        for (const [ptr, pages] of this.ptrToPages.entries()) {
+            pages.forEach(p => todasLasPaginas.add(p));
+        }
+
+        this.historialPaginas.forEach(pageId => {
+            const fila = document.createElement("tr");
+
+            const celdaPagina = document.createElement("td");
+            celdaPagina.textContent = pageId;
+
+            const celdaProceso = document.createElement("td");
+            celdaProceso.textContent = this.obtenerProcesoDePtr(pageId);
+
+            const celdaEstado = document.createElement("td");
+
+            if (this.ram.has(pageId)) {
+                celdaEstado.textContent = "✅ En RAM";
+            } else if (this.fueEliminada(pageId)) {
+                celdaEstado.textContent = "⚫ Eliminada";
+            } else {
+                celdaEstado.textContent = "❌ Swap";
+            }
+
+            fila.appendChild(celdaPagina);
+            fila.appendChild(celdaProceso);
+            fila.appendChild(celdaEstado);
+            tabla.appendChild(fila);
+        });
+
+
+
+    }
+
+    // Función auxiliar
+    obtenerProcesoDePtr(pageId) {
+        for (const [ptr, pages] of this.ptrToPages.entries()) {
+            if (pages.includes(pageId)) {
+                for (const [pid, ptrs] of this.processTable.entries()) {
+                    if (ptrs.includes(ptr)) {
+                        return pid;
+                    }
+                }
+            }
+        }
+        return "?";
     }
 
     printFinalStats() {
