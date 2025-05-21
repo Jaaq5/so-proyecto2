@@ -1,5 +1,7 @@
 class MMU_OPT {
+
     constructor(ramSize, accessSequence) {
+
         console.log(`🔧 Inicializando MMU con ${ramSize} páginas en memoria.`);
         this.ramSize = ramSize;
         this.ram = new Map();
@@ -9,105 +11,173 @@ class MMU_OPT {
         this.thrashing = 0;    // Tiempo perdido en fallos de páginas
         this.fragmentacion = 0; // Bytes desperdiciados por fragmentación interna
         this.processTable = new Map();
-
-    
+        this.ptrToPages    = new Map(); 
     }
+
 
     executeOperation(operation) {
-    // mostramos por consola la operación entrante
-    console.log(`\n📝 Ejecutando operación: ${operation}`);
 
-    // Primero quitamos los espacios sobrantes
-    const command = operation.trim();
 
-    // Luego igualq q los demas separamos tipo (“new”,“use) de sus parametros “crudos”
-    const [type, rawParams] = command.split("(");
+      // mostramos por consola la operación entrante
+      console.log(`\n📝 Ejecutando operación: ${operation}`);
 
-    // ya luego ,  convertimos rawParams “1,500)” → [1, 500]
-    const params = rawParams
-      .replace(")", "")
-      .split(",")
-      .map(Number);
 
-    if (type === "new") {
-      // params = [pid, size]
-      const [pid, size] = params;
+      // Primero quitamos los espacios sobrantes
+      const command = operation.trim();
 
-      // aseguramos que exista la lista para este PID
-      if (!this.processTable.has(pid)) {
-        this.processTable.set(pid, []);
+
+      // Luego igualq q los demas separamos tipo (“new”,“use) de sus parametros “crudos”
+      const [type, rawParams] = command.split("(");
+
+
+
+      // ya luego ,  convertimos rawParams “1,500)” → [1, 500]
+      const params = rawParams
+        .replace(")", "")
+        .split(",")
+        .map(Number);
+
+      if (type === "new") {
+
+        // params = [pid, size]
+        const [pid, size] = params;
+
+        // aseguramos que exista la lista para este PID
+        if (!this.processTable.has(pid)) {
+
+
+          this.processTable.set(pid, []);
+        }
+
+        // asignamos la pagina y guardamos su ptr
+        const ptr = this.allocatePage(pid, size);
+        this.processTable.get(pid).push(ptr);
+
+      } else if (type === "use") {
+        // params = [ptrIndex]
+        const [ptrIndex] = params;
+
+        //Preguntar esta vr
+        // en OPT, igual que MRU, los punteros tienen P adelante 
+        const ptr = `P${ptrIndex}`;
+        this.usePage(ptr);
+
+      } else if (type === "delete") {
+
+        // params = [ptrIndex]
+        const [ptrIndex] = params;
+        const ptr = `P${ptrIndex}`;
+        this.deletePage(ptr);
+
+      } else if (type === "kill") {
+
+
+        // params = [pid]
+        const [pid] = params;
+        // matamos el proceso y todas sus páginas
+
+        if (this.processTable.has(pid)) {
+
+          this.processTable.get(pid).forEach(p => this.deletePage(p));
+          this.processTable.delete(pid);
+        }
       }
 
-      // asignamos la pagina y guardamos su ptr
-      const ptr = this.allocatePage(pid, size);
-      this.processTable.get(pid).push(ptr);
-
-    } else if (type === "use") {
-      // params = [ptrIndex]
-      const [ptrIndex] = params;
-
-      //Preguntar esta vr
-      // en OPT, igual que MRU, los punteros tienen P adelante 
-      const ptr = `P${ptrIndex}`;
-      this.usePage(ptr);
-
-    } else if (type === "delete") {
-      // params = [ptrIndex]
-      const [ptrIndex] = params;
-      const ptr = `P${ptrIndex}`;
-      this.deletePage(ptr);
-
-    } else if (type === "kill") {
-      // params = [pid]
-      const [pid] = params;
-      // matamos el proceso y todas sus páginas
-      if (this.processTable.has(pid)) {
-        this.processTable.get(pid).forEach(p => this.deletePage(p));
-        this.processTable.delete(pid);
-      }
-    }
-
-    // mostramos estado tras cada operación
-    this.printStatus();
+      // mostramos estado tras cada operación
+      this.printStatus();
   }
 
     allocatePage(pid, size) {
-        let ptr = `P${this.ptrCounter++}`; // NUEVO: Siempre crea P1, P2, P3… sin repetir
-        this.accessSequence.push(ptr); //NUEVO: PUNTEROS NUEVOS
-        
-        let desperdicio = (Math.ceil(size / 4096) * 4096) - size; // Calcular fragmentación interna
-        this.fragmentacion += desperdicio;
-        console.log(`🛠️ Fragmentación interna en ${ptr}: ${desperdicio} bytes.`);
 
+      const pagesNeeded = Math.ceil(size / 4096);
+      const ptr = `P${this.ptrCounter++}`;
+
+      // registro en processTable y ptrToPages
+      if (!this.processTable.has(pid)) this.processTable.set(pid, []);
+      this.processTable.get(pid).push(ptr);
+      this.ptrToPages.set(ptr, []);
+
+      // fragmentación
+      const wasted = pagesNeeded * 4096 - size;
+      this.fragmentacion += wasted;
+      console.log(`🛠️ Fragmentación interna ptr=${ptr}: ${wasted} bytes.`);
+
+      // crear cada página
+      for (let i = 0; i < pagesNeeded; i++) {
+        const pageId = `${ptr}_pg${i}`;
+        this.accessSequence.push(pageId);
+
+        // si RAM llena, expulsar la que OPT diga
         if (this.ram.size >= this.ramSize) {
-            let evictedPtr = this.findOptimalReplacement();
-            this.ram.delete(evictedPtr);
-            console.log(`🚀 OPT: Página ${evictedPtr} reemplazada utilizando algoritmo óptimo.`);
+          const evicted = this.findOptimalReplacement();
+          this.ram.delete(evicted);
+          this.clock += 5;           // +5s en fallo al traer
+          this.thrashing += 5;
+          console.log(`🚀 OPT: expulsada página ${evicted}`);
+        } else {
+          this.clock += 1;           // +1s por hit
         }
 
-        this.ram.set(ptr, pid);
-        console.log(`✅ OPT: Página ${ptr} asignada a proceso ${pid}.`);
-        return ptr;
+        // asignar
+        this.ram.set(pageId, pid);
+        this.ptrToPages.get(ptr).push(pageId);
+        console.log(`✅ OPT: asignada página ${pageId} a proceso ${pid}.`);
+      }
+
+      return ptr;
     }
+
 
     usePage(ptr) {
+      
+      // Obtiene la lista de páginas asociadas al ptr (multi-página)
+      const pages = this.ptrToPages.get(ptr) || [];
+      if (!pages.length) {
+        console.warn(`OPT: ptr=${ptr} no existe o ya fue borrado.`);
+        return;
+      }
 
+      // Localiza el PID propietario del ptr
+      const pid = [...this.processTable.keys()]
+        .find(p => this.processTable.get(p).includes(ptr));
 
-        const index = this.accessSequence.indexOf(ptr);
-        if (index !== -1) this.accessSequence.splice(index, 1);
+      pages.forEach(pageId => {
+        // Primero, quita esta página de la secuencia futura si ya estaba ahí
+        const idx = this.accessSequence.indexOf(pageId);
+        if (idx !== -1) this.accessSequence.splice(idx, 1);
 
-        if (this.ram.has(ptr)) {
-            console.log(`🔵 HIT: Página ${ptr} está en RAM.`);
-            this.clock += 1;
+        if (this.ram.has(pageId)) {
+          // HIT
+          console.log(`🔵 OPT HIT: ${pageId}`);
+          this.clock += 1;
         } else {
-            console.log(`🔴 FAULT: Página ${ptr} no está en RAM.`);
-            this.clock += 5;
-            this.thrashing += 5;
-        }
+          // FAULT
+          console.log(`🔴 OPT FAULT: ${pageId}`);
+          this.clock += 5;
+          this.thrashing += 5;
 
-        console.log(`⏳ Tiempo total: ${this.clock}s`);
-        console.log(`🔥 Thrashing acumulado: ${this.thrashing}s`);
+          // Si la RAM está llena, expulsa la página que indique OPT
+          if (this.ram.size >= this.ramSize) {
+            const evicted = this.findOptimalReplacement();
+            this.ram.delete(evicted);
+            console.log(`🗑️ OPT (use): expulsada ${evicted}`);
+          }
+
+          // Recarga la página en RAM
+          this.ram.set(pageId, pid);
+
+          // ← IMPORTANTE: vuelve a añadir la página a la secuencia futura
+          this.accessSequence.push(pageId);
+
+          console.log(`   → recargada ${pageId} para proceso ${pid}`);
+        }
+      });
+
+      console.log(`⏳ Tiempo total: ${this.clock}s   🔥 Thrashing: ${this.thrashing}s`);
     }
+
+
+
 
     findOptimalReplacement() {
         let futureAccesses = new Map();
@@ -121,30 +191,31 @@ class MMU_OPT {
         return evictedPtr;
     }
 
+
+
     deletePage(ptr) {
-        if (this.ram.has(ptr)) {
-            this.ram.delete(ptr);
-            this.accessSequence = this.accessSequence.filter(p => p !== ptr);
-            console.log(`🗑️ OPT: Página ${ptr} eliminada.`);
-        } else {
-            console.log(`⚠️ OPT: Página ${ptr} no encontrada.`);
+      
+      const pages = this.ptrToPages.get(ptr) || [];
+      pages.forEach(pageId => {
+        if (this.ram.delete(pageId)) {
+          this.accessSequence = this.accessSequence.filter(p => p !== pageId);
+          console.log(`🗑️ OPT: página ${pageId} eliminada.`);
         }
+      });
+      this.ptrToPages.delete(ptr);
+      // eliminar ptr de processTable
+      for (const arr of this.processTable.values()) {
+        const i = arr.indexOf(ptr);
+        if (i !== -1) { arr.splice(i,1); break; }
+      }
     }
 
+
     killProcess(pid) {
-
-        // Primero Sacamos solo los ptr (como P3 y P5 por ejemplo)
-        const pagesToRemove = [...this.ram.entries()]
-        .filter(([ptr,p]) => p === pid)
-        .map(([ptr]) => ptr);
-
-        // luego borramos cada pagina y la quitamos de accessSequence
-        pagesToRemove.forEach(ptr => this.deletePage(ptr));
-        this.accessSequence = this.accessSequence.filter(p => !pagesToRemove.includes(p));
-
-        // Alfinal borramos el registro del proceso
-        this.processTable.delete(pid);
-
+      const ptrs = this.processTable.get(pid) || [];
+      ptrs.forEach(ptr => this.deletePage(ptr));
+      this.processTable.delete(pid);
+      console.log(`☠️ OPT: proceso ${pid} eliminado.`);
     }
 
     printStatus() {

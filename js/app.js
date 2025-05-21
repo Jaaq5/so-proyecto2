@@ -99,9 +99,33 @@ document.addEventListener('DOMContentLoaded', () => {
 function runSimulation(ops, MMUClass) {
   let seqOpt = [];
   if (MMUClass === MMU_OPT) {
-    seqOpt = ops
-      .filter(l => l.includes("use("))
-      .map(l => "P" + l.match(/use\((\d+)\)/)[1]);
+
+
+    const ptrToPages = new Map();
+    let ptrCounter = 1;
+    ops.forEach(op => {
+      if (op.startsWith("new(")) {
+        const [pid, size] = op
+          .match(/new\((\d+),\s*(\d+)\)/)
+          .slice(1)
+          .map(Number);
+        const ptr = `P${ptrCounter++}`;
+        const pagesNeeded = Math.ceil(size / 4096);
+        ptrToPages.set(
+          ptr,
+          Array.from({ length: pagesNeeded }, (_, i) => `${ptr}_pg${i}`)
+        );
+      }
+    });
+
+    seqOpt = [];
+    ops.forEach(op => {
+      if (op.startsWith("use(")) {
+        const ptr = "P" + op.match(/use\((\d+)\)/)[1];
+        const pages = ptrToPages.get(ptr) || [];
+        seqOpt.push(...pages);
+      }
+    });
   }
 
   const mmu = MMUClass === MMU_OPT
