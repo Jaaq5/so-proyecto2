@@ -12,6 +12,9 @@ class MMU_OPT {
         this.fragmentacion = 0; // Bytes desperdiciados por frag interna
         this.processTable = new Map();
         this.ptrToPages    = new Map(); 
+
+        this.ptrToWasted = new Map();
+
     }
 
 
@@ -93,6 +96,8 @@ class MMU_OPT {
       // frag
       const wasted = pagesNeeded * 4096 - size;
       this.fragmentacion += wasted;
+      this.ptrToWasted.set(ptr, wasted);
+
       console.log(`Fragmentacion interna ptr=${ptr}: ${wasted} bytes.`);
 
       // crear cada pag
@@ -186,6 +191,12 @@ class MMU_OPT {
 
     deletePage(ptr) {
       
+
+      const wasted = this.ptrToWasted.get(ptr) || 0;
+      this.fragmentacion -= wasted;
+      this.ptrToWasted.delete(ptr);
+
+            
       const pages = this.ptrToPages.get(ptr) || [];
       pages.forEach(pageId => {
         if (this.ram.delete(pageId)) {
