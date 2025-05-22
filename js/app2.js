@@ -1,5 +1,7 @@
 
 let operacionesDesdeArchivo = null;
+let simulacionPausada = false;
+
 
 // Lista de operaciones para la simulación
 const operacionesPorDefecto = [
@@ -48,51 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const loadFileBtn = document.getElementById('cargarArchivo');
   const fileInput = document.getElementById('fileInput');
 
-  /*
-
-  /// Validación para habilitar/deshabilitar el botón de "Generar escenario"
-  document.getElementById('seed').addEventListener('input', function () {
-    const seed = this.value;
-    const generarEscenarioBtn = document.getElementById('generarEscenario');
-
-    if (seed !== "" && !isNaN(seed)) {
-      generarEscenarioBtn.disabled = false;
-    } else {
-      generarEscenarioBtn.disabled = true;
-    }
-  });
-
-  // Validación para habilitar/deshabilitar el botón de "Iniciar ejecución"
-  document.getElementById('seed').addEventListener('input', function () {
-    const seed = this.value;
-    const iniciarEjecucionBtn = document.getElementById('iniciarEjecucionBtn');
-
-    if (seed !== "" && !isNaN(seed)) {
-      iniciarEjecucionBtn.disabled = false;
-    } else {
-      iniciarEjecucionBtn.disabled = true;
-    }
-  });
-
-  */
-
-  /*
-  // Boton de ejecucucion
-  document.getElementById('iniciarEjecucionBtn').addEventListener('click', () => {
-
-    const iniciarEjecucionBtn = document.getElementById('iniciarEjecucionBtn');
-
-    // Si el botón está deshabilitado, mostramos el alert
-    if (iniciarEjecucionBtn.disabled) {
-      alert("Por favor, genere un escenario o carge un archivo antes de iniciar la ejecucion.");
-      return;  // No ejecuta más código si el botón está deshabilitado
-    }
-
-    ejecutarSimulacion();
-  });
-
-  */
-
   // Ui de de la RAM
   form.addEventListener('submit', (event) => {
     event.preventDefault();
@@ -127,6 +84,9 @@ document.addEventListener('DOMContentLoaded', () => {
   loadFileBtn.addEventListener('click', () => {
     fileInput.click(); // Abre el selector de archivos
   });
+
+
+
 
 
   fileInput.addEventListener('change', (event) => {
@@ -166,26 +126,29 @@ document.addEventListener('DOMContentLoaded', () => {
       return; // Detener ejecución si no hay datos
     }
 
+    document.getElementById('togglePauseBtn').disabled = false;
     ejecutarSimulacion(); // Ejecutar si hay datos
   });
+
+
+  const togglePauseBtn = document.getElementById('togglePauseBtn');
+  togglePauseBtn.addEventListener('click', () => {
+    simulacionPausada = !simulacionPausada;
+    togglePauseBtn.textContent = simulacionPausada ? "▶ Reanudar" : "⏸ Pausar";
+});
+
 
 
 });
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 function ejecutarSimulacion() {
-  // contenidoGenerado esta en pruebaRandom.js
+
+
   const ops =  operacionesDesdeArchivo || contenidoGeneradoParaMemoria || operacionesPorDefecto;
   console.log(ops);
   const algorithmSelect = document.getElementById('algorithm').value;
 
-  /*
-   *  // Verificar que OPT existe
-   *  if (typeof OPT === 'undefined') {
-   *    console.error('Error: Clase OPT no está definida');
-   *    return;
-}
-*/
 
   const ventanaRam = window.open("", "_blank", "width=700,height=800");
 
@@ -316,8 +279,16 @@ function ejecutarSimulacion() {
   const mmuSelected = new (window[algorithmSelect])(10);
 
   let index = 0;
+
+
+
   function ejecutarPaso() {
     if (index < ops.length) {
+      if (simulacionPausada) {
+        setTimeout(ejecutarPaso, 100); // Reintenta cada 100ms si está pausado
+        return;
+      }
+
       const op = ops[index++];
       mmuOPT.executeOperation(op);
       mmuSelected.executeOperation(op);
@@ -332,11 +303,11 @@ function ejecutarSimulacion() {
         optFragment: mmuOPT.fragmentacion,
         selectedFragment: mmuSelected.fragmentacion,
         optThrashing: ((mmuOPT.thrashing / (mmuOPT.clock || 1)) * 100).toFixed(2),
-                             selectedThrashing: ((mmuSelected.thrashing / (mmuSelected.clock || 1)) * 100).toFixed(2),
-                             optRamUsage: ((mmuOPT.ram.size / mmuOPT.ramSize) * 100).toFixed(2),
-                             selectedRamUsage: ((mmuSelected.ram.size / mmuSelected.ramSize) * 100).toFixed(2),
-                             optThrashingTime: mmuOPT.thrashing,
-                             selectedThrashingTime: mmuSelected.thrashing
+        selectedThrashing: ((mmuSelected.thrashing / (mmuSelected.clock || 1)) * 100).toFixed(2),
+        optRamUsage: ((mmuOPT.ram.size / mmuOPT.ramSize) * 100).toFixed(2),
+        selectedRamUsage: ((mmuSelected.ram.size / mmuSelected.ramSize) * 100).toFixed(2),
+        optThrashingTime: mmuOPT.thrashing,
+        selectedThrashingTime: mmuSelected.thrashing
       }, "*");
 
       setTimeout(ejecutarPaso, 5);
@@ -345,6 +316,7 @@ function ejecutarSimulacion() {
       mmuSelected.printFinalStats();
     }
   }
+
 
   ejecutarPaso();
 
