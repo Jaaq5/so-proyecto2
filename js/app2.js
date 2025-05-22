@@ -396,7 +396,7 @@ function ejecutarSimulacion() {
                 ventanaRam.postMessage(messagePayload, "*"); // El target origin '*' es por simplicidad, en producción se debe especificar.
             }
 
-            setTimeout(ejecutarPaso, 200); // Ajusta el tiempo para la velocidad de simulación (ej. 200ms)
+            setTimeout(ejecutarPaso, 50); // Ajusta el tiempo para la velocidad de simulación (ej. 200ms)
         } else {
             // Simulación completada
             if(mmuOPT.printFinalStats) mmuOPT.printFinalStats();
