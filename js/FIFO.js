@@ -214,8 +214,39 @@ class MMU_FIFO {
         console.log(` Fragmentación interna total: ${this.fragmentacion} bytes.`);
         console.log("--------------------------------------------------");
 
-        
 
+        const tabla = document.getElementById("tablaMemoria").querySelector("tbody");
+        tabla.innerHTML = ""; // limpia contenido anterior
+
+        const todasLasPaginas = new Set();
+        for (const [ptr, pages] of this.ptrToPages.entries()) {
+            pages.forEach(p => todasLasPaginas.add(p));
+        }
+
+        this.historialPaginas.forEach(pageId => {
+            const fila = document.createElement("tr");
+
+            const celdaPagina = document.createElement("td");
+            celdaPagina.textContent = pageId;
+
+            const celdaProceso = document.createElement("td");
+            celdaProceso.textContent = this.obtenerProcesoDePtr(pageId);
+
+            const celdaEstado = document.createElement("td");
+
+            if (this.ram.has(pageId)) {
+                celdaEstado.textContent = "✅ En RAM";
+            } else if (this.fueEliminada(pageId)) {
+                celdaEstado.textContent = "⚫ Eliminada";
+            } else {
+                celdaEstado.textContent = "❌ Swap";
+            }
+
+            fila.appendChild(celdaPagina);
+            fila.appendChild(celdaProceso);
+            fila.appendChild(celdaEstado);
+            tabla.appendChild(fila);
+        });
 
 
 
@@ -233,36 +264,6 @@ class MMU_FIFO {
             }
         }
         return "?";
-    }
-
-    getMemoryTableData() {
-        const data = [];
-        this.historialPaginas.forEach(pageId => {
-            let estado = "";
-            let procesoOriginal = "?"; // Para el caso de páginas eliminadas
-
-            // Primero, intenta obtener el proceso si la página aún está activa
-            procesoOriginal = this.obtenerProcesoDePtr(pageId);
-
-            if (this.ram.has(pageId)) {
-                estado = "✅ En RAM";
-                // Si está en RAM, el PID almacenado en this.ram es el actual dueño
-                procesoOriginal = this.ram.get(pageId);
-            } else if (this.fueEliminada(pageId)) {
-                estado = "⚫ Eliminada";
-                // Si fue eliminada, obtenerProcesoDePtr podría devolver "?"
-                // Si quisiéramos el último proceso conocido, necesitaríamos más tracking.
-            } else {
-                estado = "❌ Swap";
-                // Si está en Swap, obtenerProcesoDePtr debería dar el PID del proceso al que pertenece.
-            }
-            data.push({
-                pagina: pageId,
-                proceso: procesoOriginal, // Usamos el proceso determinado
-                estado: estado
-            });
-        });
-        return data;
     }
 
     printFinalStats() {
