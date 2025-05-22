@@ -130,7 +130,12 @@ class MMU_MRU {
     return ptr;
   }
 
-
+  fueEliminada(pageId) {
+      for (const [ptr, pages] of this.ptrToPages.entries()) {
+          if (pages.includes(pageId)) return false; // aún existe
+      }
+      return true; // no está en ninguna lista activa
+  }  
 
 
   usePage(ptr) {
