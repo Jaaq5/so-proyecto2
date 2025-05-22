@@ -357,7 +357,7 @@ function ejecutarSimulacion() {
   });    
 
     
-    const mmuOPT = new window.OPT(10, ops); // OPT podría necesitar las operaciones de antemano
+    const mmuOPT = new window.OPT(10, seqOpt);
     const mmuSelected = new window[algorithmSelect](10); // Tamaño de RAM, por ejemplo 10 páginas
 
     let index = 0;
@@ -369,27 +369,28 @@ function ejecutarSimulacion() {
             if(mmuOPT.executeOperation) mmuOPT.executeOperation(op); // OPT puede tener una lógica diferente
             mmuSelected.executeOperation(op);
 
-            // Preparar payload para postMessage
+         // …dentro de ejecutarPaso(), justo antes de postMessage…
             const messagePayload = {
-                optProcesses: mmuOPT.processTable ? mmuOPT.processTable.size : 0,
-                selectedProcesses: mmuSelected.processTable.size,
-                optTime: mmuOPT.clock,
-                selectedTime: mmuSelected.clock,
-                optFaults: mmuOPT.thrashing / 5, // Asumiendo que cada fallo cuesta 5s
-                selectedFaults: mmuSelected.thrashing / 5,
-                optFragment: mmuOPT.fragmentacion,
-                selectedFragment: mmuSelected.fragmentacion,
-                optThrashing: ((mmuOPT.thrashing / (mmuOPT.clock || 1)) * 100).toFixed(2),
-                selectedThrashing: ((mmuSelected.thrashing / (mmuSelected.clock || 1)) * 100).toFixed(2),
-                optRamUsage: mmuOPT.ramSize > 0 ? ((mmuOPT.ram.size / mmuOPT.ramSize) * 100).toFixed(2) : "0.00",
-                selectedRamUsage: mmuSelected.ramSize > 0 ? ((mmuSelected.ram.size / mmuSelected.ramSize) * 100).toFixed(2) : "0.00",
-                optThrashingTime: mmuOPT.thrashing,
-                selectedThrashingTime: mmuSelected.thrashing,
-                memoryTableDataSelected: [] // Por defecto, un array vacío
+              optProcesses:       mmuOPT.processTable.size,
+              selectedProcesses:  mmuSelected.processTable.size,
+              optTime:            mmuOPT.clock,
+              selectedTime:       mmuSelected.clock,
+              optFaults:          mmuOPT.thrashing / 5,
+              selectedFaults:     mmuSelected.thrashing / 5,
+              optFragment:        mmuOPT.fragmentacion,
+              selectedFragment:   mmuSelected.fragmentacion,
+              optThrashing:       ((mmuOPT.thrashing / (mmuOPT.clock || 1)) * 100).toFixed(2),
+              selectedThrashing:  ((mmuSelected.thrashing / (mmuSelected.clock || 1)) * 100).toFixed(2),
+              optRamUsage:        mmuOPT.ramSize    ? ((mmuOPT.ram.size    / mmuOPT.ramSize)    * 100).toFixed(2) : "0.00",
+              selectedRamUsage:   mmuSelected.ramSize? ((mmuSelected.ram.size/ mmuSelected.ramSize)* 100).toFixed(2) : "0.00",
+              optThrashingTime:   mmuOPT.thrashing,
+              selectedThrashingTime: mmuSelected.thrashing,
+              // ahora viene el guard:
+              memoryTableDataSelected: []
             };
 
             if (typeof mmuSelected.getMemoryTableData === 'function') {
-                messagePayload.memoryTableDataSelected = mmuSelected.getMemoryTableData();
+              messagePayload.memoryTableDataSelected = mmuSelected.getMemoryTableData();
             }
 
             if (ventanaRam && !ventanaRam.closed) {
@@ -420,6 +421,8 @@ function ejecutarSimulacion() {
                 selectedThrashingTime: mmuSelected.thrashing,
                 memoryTableDataSelected: []
             };
+
+            
             if (typeof mmuSelected.getMemoryTableData === 'function') {
                 finalMessagePayload.memoryTableDataSelected = mmuSelected.getMemoryTableData();
             }
