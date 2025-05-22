@@ -16,6 +16,7 @@ class MMU_SC {
         this.ptrToPages   = new Map();
         // para restar correctamente frag al borrar
         this.ptrToWasted  = new Map();
+        this.historialPaginas = new Set(); // historial total de páginas creadas
 
 
 
@@ -118,10 +119,18 @@ class MMU_SC {
             this.references.set(pageId, true);
             this.ptrToPages.get(ptr).push(pageId);
             console.log(` SC: asignada subpágina ${pageId} a proceso ${pid}`);
+            this.historialPaginas.add(pageId);
         }
 
         return ptr;
     }
+
+        fueEliminada(pageId) {
+        for (const [ptr, pages] of this.ptrToPages.entries()) {
+            if (pages.includes(pageId)) return false; // aún existe
+        }
+        return true; // no está en ninguna lista activa
+    }    
 
 
 
@@ -218,6 +227,51 @@ class MMU_SC {
         console.table([...this.ram]);
         console.log(`Fragmentación interna total: ${this.fragmentacion} bytes.`);
         console.log("--------------------------------------------------");
+    }
+
+
+            // Función auxiliar
+    obtenerProcesoDePtr(pageId) {
+        for (const [ptr, pages] of this.ptrToPages.entries()) {
+            if (pages.includes(pageId)) {
+                for (const [pid, ptrs] of this.processTable.entries()) {
+                    if (ptrs.includes(ptr)) {
+                        return pid;
+                    }
+                }
+            }
+        }
+        return "?";
+    }
+
+    getMemoryTableData() {
+        const data = [];
+        this.historialPaginas.forEach(pageId => {
+            let estado = "";
+            let procesoOriginal = "?"; // Para el caso de páginas eliminadas
+
+            // Primero, intenta obtener el proceso si la página aún está activa
+            procesoOriginal = this.obtenerProcesoDePtr(pageId);
+
+            if (this.ram.has(pageId)) {
+                estado = "✅ En RAM";
+                // Si está en RAM, el PID almacenado en this.ram es el actual dueño
+                procesoOriginal = this.ram.get(pageId);
+            } else if (this.fueEliminada(pageId)) {
+                estado = "⚫ Eliminada";
+                // Si fue eliminada, obtenerProcesoDePtr podría devolver "?"
+                // Si quisiéramos el último proceso conocido, necesitaríamos más tracking.
+            } else {
+                estado = "❌ Swap";
+                // Si está en Swap, obtenerProcesoDePtr debería dar el PID del proceso al que pertenece.
+            }
+            data.push({
+                pagina: pageId,
+                proceso: procesoOriginal, // Usamos el proceso determinado
+                estado: estado
+            });
+        });
+        return data;
     }
 
     printFinalStats() {
